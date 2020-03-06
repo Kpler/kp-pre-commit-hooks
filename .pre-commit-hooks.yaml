@@ -1,0 +1,7 @@
+-   id: check-branch-linearity
+    name: Check for git branch linearity
+    language: script
+    entry: ./git-branch-linearity.sh
+    always_run: true
+    pass_filenames: false
+    stages: [push]
