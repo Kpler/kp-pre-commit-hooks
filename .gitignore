@@ -1,0 +1,38 @@
+#################
+## Emacs
+#################
+
+.dir-locals.el
+\#*
+.\#*
+
+#################
+## idea
+#################
+
+.idea/
+.vscode
+*.iml
+
+#################
+## Vim
+#################
+
+*.swp
+
+#################
+## Eclipse
+#################
+
+*.pydevproject
+.project
+.metadata
+tmp/
+*.tmp
+*.bak
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+
