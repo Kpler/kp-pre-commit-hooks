@@ -18,3 +18,7 @@ Add this to your `.pre-commit-config.yaml`
 #### `check-branch-linearity`
 Simply check that your branch doesn't not contain any merge compare to master.
 It's a pre-push hook and will always run
+
+#### `check-branch-name`
+Check that branch name is less than 70 characters
+It's a pre-push hook and will always run

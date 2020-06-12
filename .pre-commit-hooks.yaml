@@ -5,3 +5,11 @@
     always_run: true
     pass_filenames: false
     stages: [push]
+
+-   id: check-branch-name
+    name: Check branch name
+    language: script
+    entry: ./branch-naming.sh
+    always_run: true
+    pass_filenames: false
+    stages: [push]
