@@ -22,3 +22,7 @@ It's a pre-push hook and will always run
 #### `check-branch-name`
 Check that branch name is less than 70 characters
 It's a pre-push hook and will always run
+
+#### `check-commit-first-line-length`
+Check that the first line of commit message is not too long
+It's a pre-push hook and will always run
