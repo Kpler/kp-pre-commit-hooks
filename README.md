@@ -24,5 +24,5 @@ Check that branch name is less than 70 characters
 It's a pre-push hook and will always run
 
 #### `check-commit-first-line-length`
-Check that the first line of commit message is not too long
+Check that the first line of commit message is less than 72 characters
 It's a pre-push hook and will always run
