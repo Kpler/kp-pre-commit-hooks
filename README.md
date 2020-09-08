@@ -7,20 +7,12 @@ Some out-of-the-box hooks for [pre-commit](https://github.com/pre-commit/pre-com
 
 Add this to your `.pre-commit-config.yaml`
 
-    -   repo: git@github.com:Kpler/kp-pre-commit-hooks.git
-        rev: v0.0.0.1  # Use the ref you want to point at
+    -   repo: https://github.com/Kpler/kp-pre-commit-hooks.git
+        rev: v0.0.3  # Use the ref you want to point at
         hooks:
         -   id: check-branch-linearity
-
-
-### Running hooks from CircleCI
-
-Cloning a repo using ssh doesn't work out of the box on CircleCI.
-
-Workaround: adding this in .circleci/config.yml solve the issue (cf [link](https://discuss.circleci.com/t/the-authenticity-of-github-host-cant-be-stablished/33133)):
-> mkdir ~/.ssh/ && echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-
-example: https://github.com/Kpler/ct-pipeline/blob/1.269.12/.circleci/config.yml#L110
+        -   id: check-commit-first-line-length
+        -   id: check-branch-name
 
 ### Hooks available
 
