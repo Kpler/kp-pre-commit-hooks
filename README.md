@@ -27,3 +27,8 @@ It's a pre-push hook and will always run
 #### `check-commit-first-line-length`
 Check that the first line of commit message is less than 72 characters
 It's a pre-push hook and will always run
+
+#### `no-ephemeral-links`
+Time is fleeting, we change services.
+Consequently to keep the code futureproof we don't
+want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
