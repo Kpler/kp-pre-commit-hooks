@@ -14,13 +14,6 @@
     pass_filenames: false
     stages: [push]
 
--   id: check-commit-first-line-length
-    name: Check commit first line length
-    language: script
-    entry: ./check-commit-msg-length.sh
-    always_run: true
-    pass_filenames: false
-    stages: [push]
 -   id: no-ephemeral-links
     name: No ephemeral links
     language: script
