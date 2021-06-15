@@ -1,5 +1,9 @@
 #!/bin/sh
-out=$(git log origin/master..HEAD --merges --oneline)
+
+if [ "$(git branch --list main)" ]; then TARGET_BRANCH="main"; else TARGET_BRANCH="master"; fi
+
+echo "Target branch: $TARGET_BRANCH"
+out=$(git log origin/${TARGET_BRANCH}..HEAD --merges --oneline)
 
 exit_status=$?
 if [ -n  "$out" ]
