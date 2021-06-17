@@ -1,10 +1,10 @@
 #!/bin/sh
 
-if [ "$(git branch --list main)" ]; then TARGET_BRANCH="main"; else TARGET_BRANCH="master"; fi
-
+git fetch origin main:refs/remotes/origin/main 2> /dev/null
+if [ $? -eq 0 ]; then TARGET_BRANCH="main"; else TARGET_BRANCH="master"; fi
 echo "Target branch: $TARGET_BRANCH"
-out=$(git log origin/${TARGET_BRANCH}..HEAD --merges --oneline)
 
+out=$(git log origin/${TARGET_BRANCH}..HEAD --merges --oneline)
 exit_status=$?
 if [ -n  "$out" ]
 then
@@ -13,7 +13,7 @@ then
     echo "\nMerge commit(s):" >&2
     echo "$out" >&2
     # Disclaimer: current version of the check doesn't work well with release branches
-exit_status=1
+    exit_status=1
 fi
 
 exit ${exit_status}
