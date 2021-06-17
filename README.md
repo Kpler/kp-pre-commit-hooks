@@ -29,3 +29,17 @@ It's a pre-push hook and will always run
 Time is fleeting, we change services.
 Consequently to keep the code futureproof we don't
 want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
+
+### Contributing
+
+#### Debugging / testing
+Hooks can be tried locally using `try-repo`
+For example if I want to try `check-branch-linearity` from another repo
+I can do:
+```bash
+pre-commit try-repo path_to_this_repo/kp-pre-commit-hooks/ check-branch-linearity --hook-stage push --verbose
+```
+
+#### Releasing a new version
+
+To release a new version simple push a new tag with an increased version
