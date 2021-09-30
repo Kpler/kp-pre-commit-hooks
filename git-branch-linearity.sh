@@ -1,8 +1,10 @@
 #!/bin/sh
 
-git fetch origin main:refs/remotes/origin/main 2> /dev/null
-if [ $? -eq 0 ]; then TARGET_BRANCH="main"; else TARGET_BRANCH="master"; fi
+# Use parameter passed to the script or default to master
+TARGET_BRANCH="${1:-master}"
+
 echo "Target branch: $TARGET_BRANCH"
+git fetch origin $TARGET_BRANCH 2> /dev/null
 
 out=$(git log origin/${TARGET_BRANCH}..HEAD --merges --oneline)
 exit_status=$?
