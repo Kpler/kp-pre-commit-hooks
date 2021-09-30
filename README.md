@@ -7,6 +7,7 @@ Some out-of-the-box hooks for [pre-commit](https://github.com/pre-commit/pre-com
 
 Add this to your `.pre-commit-config.yaml`
 
+```yaml
     -   repo: https://github.com/Kpler/kp-pre-commit-hooks.git
         rev: v0.0.7  # Use the ref you want to point at
         hooks:
@@ -14,12 +15,20 @@ Add this to your `.pre-commit-config.yaml`
         -   id: check-branch-name
         -   id: no-ephemeral-links
             exclude: '\.md$'
+```
 
 ### Hooks available
 
 #### `check-branch-linearity`
-Simply check that your branch doesn't not contain any merge compare to `master` or `main` branch.
+Simply check that your branch doesn't not contain any merge compare to a target branch, `master` by default.
 It's a pre-push hook and will always run
+
+To configure the target branch:
+```yaml
+    hooks:
+    -   id: check-branch-linearity
+        args: [targetbranch]
+```
 
 #### `check-branch-name`
 Check that branch name is less than 70 characters
