@@ -13,6 +13,8 @@ runs:
   using: "composite"
   steps:
     - uses: actions/setup-python@v2
+      with:
+        python-version: '3.7.9'
     - name: Skip some hooks
       run: echo "SKIP=${{ inputs.skipped-hooks }}" >> $GITHUB_ENV
       if: ${{ inputs.skipped-hooks }} != ''
