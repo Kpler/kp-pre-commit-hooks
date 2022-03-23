@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Use parameter passed to the script or default to master
-TARGET_BRANCH="${1:-master}"
+TARGET_BRANCH="${1:-main}"
 
 echo "Target branch: $TARGET_BRANCH"
 git fetch origin $TARGET_BRANCH 2> /dev/null
