@@ -21,7 +21,7 @@ Add this to your `.pre-commit-config.yaml`
 ### Hooks available
 
 #### `check-branch-linearity`
-Simply check that your branch doesn't not contain any merge compare to a target branch, `master` by default.
+Simply check that your branch doesn't not contain any merge compare to a target branch, `main` by default.
 It's a pre-push hook and will always run
 
 To configure the target branch:
@@ -54,6 +54,7 @@ jobs:
     - uses: Kpler/kp-pre-commit-hooks@version
       with:
         skipped-hooks: 'no-commit-to-branch'
+        # use main by default
         main-branch: 'master'
 ```
 
