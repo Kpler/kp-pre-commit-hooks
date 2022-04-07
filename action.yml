@@ -41,4 +41,3 @@ runs:
                pre-commit run --color=always --hook-stage commit-msg --commit-msg-filename tmp
             done
       shell: bash
-
