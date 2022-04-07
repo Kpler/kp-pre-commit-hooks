@@ -35,3 +35,5 @@ local.properties
 .classpath
 .settings/
 .loadpath
+.direnv/
+.envrc
