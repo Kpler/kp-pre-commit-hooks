@@ -40,28 +40,6 @@ Time is fleeting, we change services.
 Consequently to keep the code futureproof we don't
 want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
 
-### Github actions
-
-Run pre-commit hooks of type: commit, push and commit-msg
-
-Example:
-```yaml
-jobs:
-  pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: Kpler/kp-pre-commit-hooks@version
-      with:
-        skipped-hooks: 'no-commit-to-branch'
-        # use main by default
-        main-branch: 'master'
-```
-
-#### Alternatives:
-  - [The official pre-commit action](https://github.com/pre-commit/action): deprecated and hard to use with several type of hooks
-  - [The pre-commit CI](https://pre-commit.ci/): yet another CI and expensive (pricing per user)
-
 ### Contributing
 
 #### Debugging / testing
