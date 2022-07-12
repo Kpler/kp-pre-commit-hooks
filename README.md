@@ -49,7 +49,3 @@ I can do:
 ```bash
 pre-commit try-repo path_to_this_repo/kp-pre-commit-hooks/ check-branch-linearity --hook-stage push --verbose
 ```
-
-#### Releasing a new version
-
-To release a new version simple push a new tag with an increased version
