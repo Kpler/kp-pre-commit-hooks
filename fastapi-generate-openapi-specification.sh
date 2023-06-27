@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+
+API_PACKAGE="${1}"
+SPEC_FILE_PATH="${2}"
+
+poetry run python -c '
 import argparse
 import json
 
@@ -22,9 +28,10 @@ def main() -> None:
         with open(args.spec_file_path, "w") as f:
             json.dump(app.openapi(), f, indent=4, sort_keys=True)
         exit(1)
-    print("OpenAPI specification hasn't changed")
+    print("OpenAPI specification has not changed")
     exit(0)
 
 
 if __name__ == "__main__":
     main()
+' --api_package $API_PACKAGE --spec_file_path $SPEC_FILE_PATH

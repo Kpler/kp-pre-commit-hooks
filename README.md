@@ -40,6 +40,9 @@ Time is fleeting, we change services.
 Consequently to keep the code futureproof we don't
 want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
 
+#### `fastapi-generate-openapi-specification`
+Generate the Open API spec from a Fast API. If it has changed, write the new one and fails. If not, succeeds.
+
 ### Contributing
 
 #### Debugging / testing

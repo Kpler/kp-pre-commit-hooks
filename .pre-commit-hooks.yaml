@@ -20,8 +20,9 @@
     entry: ./no-ephemeral-links.sh
     stages: [commit]
 
--   id: generate-open-api-spec-from-fast-api
+-   id: fastapi-generate-openapi-specification
     name: Generate Open API specification from a Fast API
-    language: system
-    entry: poetry run python ./fast_api_generate_openapi_specification.py
+    language: script
+    entry: ./fastapi-generate-openapi-specification.sh
     stages: [commit]
+    pass_filenames: false
