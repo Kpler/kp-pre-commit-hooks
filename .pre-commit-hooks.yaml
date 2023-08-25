@@ -26,3 +26,9 @@
     entry: ./fastapi-generate-openapi-specification.sh
     stages: [commit]
     pass_filenames: false
+
+-   id: values-jsonschema-validation
+    name: Jsonschema validation
+    language: python3
+    entry: python3 ./chart-values-json-schema-validation.py
+    stages: [commit]
