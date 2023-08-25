@@ -36,13 +36,16 @@ def download_schema_json(version):
 
 
 def delete_error_files(directory="."):
+    """
+    Delete error files.
+    """
     for filename in os.listdir(directory):
         if filename.startswith("error-merged-values-") and filename.endswith(".yaml"):
             file_path = os.path.join(directory, filename)
             try:
                 os.remove(file_path)
-            except Exception as e:
-                print(f"Error deleting {file_path}. Reason: {e}")
+            except Exception as err:
+                print(f"Error deleting {file_path}. Reason: {err}")
                 continue
 
 
