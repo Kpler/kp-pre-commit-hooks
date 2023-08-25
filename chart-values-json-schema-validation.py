@@ -35,6 +35,17 @@ def download_schema_json(version):
     return None
 
 
+def delete_error_files(directory="."):
+    for filename in os.listdir(directory):
+        if filename.startswith("error-merged-values-") and filename.endswith(".yaml"):
+            file_path = os.path.join(directory, filename)
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Error deleting {file_path}. Reason: {e}")
+                continue
+
+
 def deep_merge(source, destination):
     """
     Deep merge dictionaries.
@@ -131,6 +142,7 @@ def main():
                                             validate_json_schema(
                                                 merged_values, schema_data
                                             )
+                                            delete_error_files(svc_path)
                                         except Exception as err:
                                             print(
                                                 f"Validation error for {instance_file}: {err}"
