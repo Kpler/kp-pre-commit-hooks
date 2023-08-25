@@ -29,6 +29,6 @@
 
 -   id: values-jsonschema-validation
     name: Jsonschema validation
-    language: python3
-    entry: python3 ./chart-values-json-schema-validation.py
+    language: python
+    entry: python ./chart-values-json-schema-validation.py
     stages: [commit]
