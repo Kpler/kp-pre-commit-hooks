@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import sys
 from itertools import chain
 from pathlib import Path
@@ -12,7 +13,7 @@ from ruamel.yaml import YAML
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 SCHEMA_BASE_URL = (
-    "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/"
+    "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema"
 )
 GITOPS_DIR = Path("gitops")
 
@@ -24,8 +25,21 @@ def download_schema_json(version):
     schema_url = (
         f"{SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart-strict.json"
     )
-    schema_json = requests.get(schema_url, timeout=10, verify=False).json()
-    return schema_json
+    response = requests.get(schema_url, timeout=10, verify=False)
+
+    # Check if the request was successful
+    if response.status_code != 200:
+        print(
+            f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}"
+        )
+        return None
+
+    try:
+        schema_json = response.json()
+        return schema_json
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON. Response content:\n{response.text}")
+        return None
 
 
 def verify_schema_version(version, directory=Path(".")):
