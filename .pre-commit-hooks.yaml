@@ -27,8 +27,8 @@
     stages: [commit]
     pass_filenames: false
 
--   id: values-jsonschema-validation
-    name: Jsonschema validation
+-   id: gitops-values-validation
+    name: GitOps values JSON schema validation
     language: script
-    entry: ./chart-values-json-schema-validation.py
+    entry: ./gitops-values-validation.py
     stages: [commit]
