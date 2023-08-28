@@ -31,12 +31,7 @@ def verify_schema_version(version, directory=Path(".")):
     """
     Verify if schema version in the values yaml are correct.
     """
-    for filename in directory.iterdir():
-        if (not filename.name.startswith("values")) or (
-            not filename.name.endswith(".yaml")
-        ):
-            continue
-
+    for filename in directory.glob("values*.yaml"):     
         value_file = filename.read_text(encoding="utf8")
         for line in value_file.splitlines():
             if line.startswith("# yaml-language-server: $schema="):
@@ -53,12 +48,7 @@ def delete_error_files(directory=Path(".")):
     """
     Delete error files.
     """
-    for filename in directory.iterdir():
-        if (not filename.name.startswith("error-merged-values-")) or (
-            not filename.name.endswith(".yaml")
-        ):
-            continue
-
+    for filename in directory.glob("error-merged-values-*.yaml"):
         try:
             filename.unlink()
         except Exception as err:
