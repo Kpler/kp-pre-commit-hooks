@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 import urllib3
 from jsonschema import validate
+from jsonschema.exceptions import ValidationError
 from ruamel.yaml import YAML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -46,10 +47,11 @@ def verify_schema_version(version, directory=Path(".")):
             if line.startswith("# yaml-language-server: $schema="):
                 schema_version = line.split("=")[1].split("/")[-2].replace("v", "")
                 if schema_version != version:
+                    print(f"ERROR: validation failure for {directory}/{filename}")
                     print(
-                        f"JSON schema version {line} in {filename} is not match with Chart.yaml, exiting..."
+                        f"reason: JSON schema version in '{line}' does not match version in Chart.yaml"
                     )
-                    sys.exit(3)
+                    return False
     return True
 
 
@@ -106,6 +108,13 @@ def merge_yaml_files(service_path, instance_file):
     return merged_data
 
 
+def find_full_error_path(error):
+    if error.parent:
+        return find_full_error_path(error.parent) + error.path
+    else:
+        return error.path
+
+
 def main():
     """
     Main function.
@@ -113,6 +122,8 @@ def main():
     if not GITOPS_DIR.exists():
         print(f"{GITOPS_DIR} directory is missing, exiting...")
         sys.exit(0)
+
+    error_found = False
 
     # Iterate over direct subdirectories inside GITOPS_DIR
     for service_path in GITOPS_DIR.glob("*/*"):
@@ -141,7 +152,10 @@ def main():
             )
             continue
 
-        verify_schema_version(chart_version, service_path)
+        if not verify_schema_version(chart_version, service_path):
+            error_found = True
+            continue
+
         schema_data = download_schema_json(chart_version)
 
         if not schema_data:
@@ -157,8 +171,11 @@ def main():
             try:
                 validate(instance=merged_values, schema=schema_data)
                 delete_error_files(service_path)
-            except Exception as err:
-                print(f"Validation error for {instance_file}: {err}")
+            except ValidationError as err:
+                error_found = True
+                error_location = "/".join(find_full_error_path(err))
+                print(f"ERROR: validation failure for {service_path}/{instance_file}")
+                print(f"reason: {err.message} at {error_location}\n")
                 output_file = service_path / f"error-merged-{instance_file}"
                 with output_file.open("w", encoding="utf8") as out:
                     out.write(
@@ -166,7 +183,13 @@ def main():
                     )
                     yaml = YAML()
                     yaml.dump(merged_values, out)
-                sys.exit(err)
+
+            except Exception as err:
+                error_found = True
+                print(f"ERROR: unexpected validation error for {service_path}/{instance_file}")
+                print(f"reason: {err}\n")
+
+    sys.exit(1 if error_found else 0)
 
 
 if __name__ == "__main__":
