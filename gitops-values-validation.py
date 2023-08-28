@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import os
 import sys
+from pathlib import Path
 
 import requests
 import urllib3
@@ -13,7 +13,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 SCHEMA_BASE_URL = (
     "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/"
 )
-GITOPS_DIR = "gitops"
+GITOPS_DIR = Path("gitops")
 
 
 def download_schema_json(version):
@@ -27,43 +27,42 @@ def download_schema_json(version):
     return schema_json
 
 
-def verify_schema_version(version, directory="."):
+def verify_schema_version(version, directory=Path(".")):
     """
     Verify if schema version in the values yaml are correct.
     """
-    for filename in os.listdir(directory):
-        if (not filename.startswith("values")) or (not filename.endswith(".yaml")):
-            continue
-
-        file_path = os.path.join(directory, filename)
-        with open(file_path, "r", encoding="utf8") as value_file:
-            for line in value_file:
-                if line.startswith("# yaml-language-server: $schema="):
-                    schema_version = line.split("=")[1].split("/")[-2].replace("v", "")
-                    if schema_version != version:
-                        print(
-                            f"JSON schema version {line} in {file_path} is not match with Chart.yaml, exiting..."
-                        )
-                        sys.exit(3)
-    return True
-
-
-def delete_error_files(directory="."):
-    """
-    Delete error files.
-    """
-    for filename in os.listdir(directory):
-        if (not filename.startswith("error-merged-values-")) or (
-            not filename.endswith(".yaml")
+    for filename in directory.iterdir():
+        if (not filename.name.startswith("values")) or (
+            not filename.name.endswith(".yaml")
         ):
             continue
 
-        file_path = os.path.join(directory, filename)
-        try:
-            os.remove(file_path)
-        except Exception as err:
-            print(f"Error deleting {file_path}. Reason: {err}")
+        value_file = filename.read_text(encoding="utf8")
+        for line in value_file.splitlines():
+            if line.startswith("# yaml-language-server: $schema="):
+                schema_version = line.split("=")[1].split("/")[-2].replace("v", "")
+                if schema_version != version:
+                    print(
+                        f"JSON schema version {line} in {filename} is not match with Chart.yaml, exiting..."
+                    )
+                    sys.exit(3)
+    return True
+
+
+def delete_error_files(directory=Path(".")):
+    """
+    Delete error files.
+    """
+    for filename in directory.iterdir():
+        if (not filename.name.startswith("error-merged-values-")) or (
+            not filename.name.endswith(".yaml")
+        ):
             continue
+
+        try:
+            filename.unlink()
+        except Exception as err:
+            print(f"Error deleting {filename}. Reason: {err}")
 
 
 def deep_merge(source, destination):
@@ -89,22 +88,20 @@ def merge_yaml_files(svc_path, instance_file):
     merged_data = {}
 
     # Base file
-    with open(os.path.join(svc_path, "values.yaml"), "r", encoding="utf8") as base_file:
-        merged_data.update(yaml.load(base_file))
+    base_file = (svc_path / "values.yaml").read_text(encoding="utf8")
+    merged_data.update(yaml.load(base_file))
 
     # Environment file
     env = "dev" if "dev" in instance_file else "prod"
-    env_file_path = os.path.join(svc_path, f"values-{env}.yaml")
-    if os.path.exists(env_file_path):
-        with open(env_file_path, "r", encoding="utf8") as env_file:
-            env_data = yaml.load(env_file)
+    env_file_path = svc_path / f"values-{env}.yaml"
+    if env_file_path.exists():
+        env_file = env_file_path.read_text(encoding="utf8")
+        env_data = yaml.load(env_file)
         deep_merge(env_data, merged_data)
 
     # Instance file
-    with open(
-        os.path.join(svc_path, instance_file), "r", encoding="utf8"
-    ) as instance_f:
-        instance_data = yaml.load(instance_f)
+    instance_f = (svc_path / instance_file).read_text(encoding="utf8")
+    instance_data = yaml.load(instance_f)
     deep_merge(instance_data, merged_data)
 
     return merged_data
@@ -114,33 +111,33 @@ def main():
     """
     Main function.
     """
-    if not os.path.exists(GITOPS_DIR):
+    if not GITOPS_DIR.exists():
         print(f"{GITOPS_DIR} directory is missing, exiting...")
         sys.exit(0)
 
-    for app in os.listdir(GITOPS_DIR):
-        app_path = os.path.join(GITOPS_DIR, app)
-        if not os.path.exists(app_path):
+    for app in GITOPS_DIR.iterdir():
+        app_path = GITOPS_DIR / app
+        if not app_path.exists():
             print(f"{app_path} directory does not exist, exiting...")
             continue
 
-        for svc in os.listdir(app_path):
-            svc_path = os.path.join(app_path, svc)
-            if not os.path.isdir(svc_path):
+        for svc in app_path.iterdir():
+            svc_path = app_path / svc
+            if not svc_path.is_dir():
                 print(f"{svc_path} is not a directory, skipping...")
                 continue
 
-            chart_file = os.path.join(svc_path, "Chart.yaml")
-            value_file = os.path.join(svc_path, "values.yaml")
-            if (not os.path.isfile(chart_file)) or (not os.path.isfile(value_file)):
+            chart_file = svc_path / "Chart.yaml"
+            value_file = svc_path / "values.yaml"
+            if (not chart_file.is_file()) or (not value_file.is_file()):
                 print(
                     f"Chart.yaml or values.yaml file is missing in {svc_path}, skipping..."
                 )
                 continue
 
-            with open(chart_file, "r", encoding="utf8") as chart:
-                yaml = YAML()
-                chart_data = yaml.load(chart)
+            chart_content = chart_file.read_text(encoding="utf8")
+            yaml = YAML()
+            chart_data = yaml.load(chart_content)
 
             chart_version = next(
                 (
@@ -167,10 +164,10 @@ def main():
                 continue
 
             instance_files = [
-                value_file
-                for value_file in os.listdir(svc_path)
-                if value_file.startswith("values-dev-")
-                or value_file.startswith("values-prod-")
+                value_file.name
+                for value_file in svc_path.iterdir()
+                if value_file.name.startswith("values-dev-")
+                or value_file.name.startswith("values-prod-")
             ]
 
             for instance_file in instance_files:
@@ -180,10 +177,8 @@ def main():
                     delete_error_files(svc_path)
                 except Exception as err:
                     print(f"Validation error for {instance_file}: {err}")
-                    output_file = os.path.join(
-                        svc_path, f"error-merged-{instance_file}"
-                    )
-                    with open(output_file, "w", encoding="utf8") as out:
+                    output_file = svc_path / f"error-merged-{instance_file}"
+                    with output_file.open("w", encoding="utf8") as out:
                         out.write(
                             f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v${chart_version}/schema-platform-managed-chart-strict.json\n"
                         )
