@@ -12,9 +12,7 @@ from ruamel.yaml import YAML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-SCHEMA_BASE_URL = (
-    "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema"
-)
+SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema"
 GITOPS_DIR = Path("gitops")
 
 
@@ -22,16 +20,12 @@ def download_schema_json(version):
     """
     Download json schema for chart version.
     """
-    schema_url = (
-        f"{SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart-strict.json"
-    )
+    schema_url = f"{SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart-strict.json"
     response = requests.get(schema_url, timeout=10, verify=False)
 
     # Check if the request was successful
     if response.status_code != 200:
-        print(
-            f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}"
-        )
+        print(f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}")
         return None
 
     try:
@@ -125,9 +119,7 @@ def main():
         chart_file = service_path / "Chart.yaml"
         value_file = service_path / "values.yaml"
         if (not chart_file.is_file()) or (not value_file.is_file()):
-            print(
-                f"Chart.yaml or values.yaml file is missing in {service_path}, skipping..."
-            )
+            print(f"Chart.yaml or values.yaml file is missing in {service_path}, skipping...")
             continue
 
         chart_content = chart_file.read_text(encoding="utf8")
@@ -153,9 +145,7 @@ def main():
         schema_data = download_schema_json(chart_version)
 
         if not schema_data:
-            print(
-                f"JSON schema for version {chart_version} is not supported, skipping..."
-            )
+            print(f"JSON schema for version {chart_version} is not supported, skipping...")
             continue
 
         for instance_file_path in chain(

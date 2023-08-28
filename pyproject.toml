@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "kp-pre-commit-hooks"
+version = "0.1.0"
+description = "Set of Kpler specific pre-commit hooks"
+packages = [{include = "kp_pre_commit_hooks"}]
+authors = ["Kpler Engineering <team-engineering@kpler.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+jsonschema = "^4.19.0"
+requests = "^2.31.0"
+ruamel-yaml = "^0.17.32"
+
+[tool.poetry.group.dev.dependencies]
+black = {version = "^22.10.0", allow-prereleases = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
