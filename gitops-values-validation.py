@@ -149,7 +149,7 @@ def main():
             )
             continue
 
-        verify_schema_version(chart_version)
+        verify_schema_version(chart_version, service_path)
         schema_data = download_schema_json(chart_version)
 
         if not schema_data:
