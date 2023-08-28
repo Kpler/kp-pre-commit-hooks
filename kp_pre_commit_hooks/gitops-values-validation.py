@@ -16,15 +16,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema"
 GITOPS_DIR = Path("gitops")
 
+yaml = YAML()
 
-def download_schema_json(version):
-    """
-    Download json schema for chart version.
-    """
+
+def download_json_schema_for_chart_version(version):
     schema_url = f"{SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart-strict.json"
     response = requests.get(schema_url, timeout=10, verify=False)
 
-    # Check if the request was successful
     if response.status_code != 200:
         print(f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}")
         return None
@@ -37,10 +35,7 @@ def download_schema_json(version):
         return None
 
 
-def verify_schema_version(version, directory=Path(".")):
-    """
-    Verify if schema version in the values yaml are correct.
-    """
+def verify_values_files_schema_version(version, directory=Path(".")):
     for filename in directory.glob("values*.yaml"):
         value_file = filename.read_text(encoding="utf8")
         for line in value_file.splitlines():
@@ -56,9 +51,6 @@ def verify_schema_version(version, directory=Path(".")):
 
 
 def delete_error_files(directory=Path(".")):
-    """
-    Delete error files.
-    """
     for filename in directory.glob("error-merged-values-*.yaml"):
         try:
             filename.unlink()
@@ -67,9 +59,6 @@ def delete_error_files(directory=Path(".")):
 
 
 def deep_merge(source, destination):
-    """
-    Recursively merge two dictionaries.
-    """
     for key, value in source.items():
         if isinstance(value, dict):
             # Get node or create one
@@ -81,11 +70,8 @@ def deep_merge(source, destination):
     return destination
 
 
-def merge_yaml_files(service_path, instance_file):
-    """
-    Merge values.yaml, values-env.yaml and values-env-instance.yaml files.
-    """
-    yaml = YAML()
+def merge_service_values_files(service_path, instance_file):
+    """Merge values.yaml, values-env.yaml and values-env-instance.yaml files."""
     merged_data = {}
 
     # Base file
@@ -116,9 +102,6 @@ def find_full_error_path(error):
 
 
 def main():
-    """
-    Main function.
-    """
     if not GITOPS_DIR.exists():
         print(f"{GITOPS_DIR} directory is missing, exiting...")
         sys.exit(0)
@@ -129,14 +112,11 @@ def main():
     for service_path in GITOPS_DIR.glob("*/*"):
         chart_file = service_path / "Chart.yaml"
         value_file = service_path / "values.yaml"
-        if (not chart_file.is_file()) or (not value_file.is_file()):
+        if not (chart_file.is_file() and value_file.is_file()):
             print(f"Chart.yaml or values.yaml file is missing in {service_path}, skipping...")
             continue
 
-        chart_content = chart_file.read_text(encoding="utf8")
-        yaml = YAML()
-        chart_data = yaml.load(chart_content)
-
+        chart_data = yaml.load(chart_file.read_text(encoding="utf8"))
         chart_version = next(
             (
                 dep["version"]
@@ -152,12 +132,11 @@ def main():
             )
             continue
 
-        if not verify_schema_version(chart_version, service_path):
+        if not verify_values_files_schema_version(chart_version, service_path):
             error_found = True
             continue
 
-        schema_data = download_schema_json(chart_version)
-
+        schema_data = download_json_schema_for_chart_version(chart_version)
         if not schema_data:
             print(f"JSON schema for version {chart_version} is not supported, skipping...")
             continue
@@ -167,7 +146,7 @@ def main():
             service_path.glob("values-prod-*.yaml"),
         ):
             instance_file = instance_file_path.name
-            merged_values = merge_yaml_files(service_path, instance_file)
+            merged_values = merge_service_values_files(service_path, instance_file)
             try:
                 validate(instance=merged_values, schema=schema_data)
                 delete_error_files(service_path)
@@ -181,7 +160,6 @@ def main():
                     out.write(
                         f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v${chart_version}/schema-platform-managed-chart-strict.json\n"
                     )
-                    yaml = YAML()
                     yaml.dump(merged_values, out)
 
             except Exception as err:
