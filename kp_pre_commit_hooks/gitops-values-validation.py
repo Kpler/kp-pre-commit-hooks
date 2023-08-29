@@ -147,8 +147,7 @@ def main():
             service_path.glob("values-prod-*.yaml"),
         ):
             instance_file = instance_file_path.name
-            merged_values = merge_yaml_files(service_path, instance_file)
-
+            merged_values = merge_service_values_files(service_path, instance_file)
             validator = Draft7Validator(schema_data)
             errors = list(validator.iter_errors(merged_values))
 
