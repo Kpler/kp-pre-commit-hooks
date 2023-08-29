@@ -7,13 +7,12 @@ from pathlib import Path
 
 import requests
 import urllib3
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
+from jsonschema import Draft7Validator
 from ruamel.yaml import YAML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema"
+SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-manager-chart"
 GITOPS_DIR = Path("gitops")
 
 yaml = YAML()
@@ -24,15 +23,17 @@ def download_json_schema_for_chart_version(version):
     response = requests.get(schema_url, timeout=10, verify=False)
 
     if response.status_code != 200:
-        print(f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}")
-        return None
+        print(
+            f"Error fetching schema url {schema_url}. HTTP Status Code: {response.status_code}\nPlease enable VPN first."
+        )
+        sys.exit(4)
 
     try:
         schema_json = response.json()
         return schema_json
     except json.JSONDecodeError:
         print(f"Error decoding JSON. Response content:\n{response.text}")
-        return None
+        sys.exit(4)
 
 
 def verify_values_files_schema_version(version, directory=Path(".")):
@@ -146,28 +147,27 @@ def main():
             service_path.glob("values-prod-*.yaml"),
         ):
             instance_file = instance_file_path.name
-            merged_values = merge_service_values_files(service_path, instance_file)
-            try:
-                validate(instance=merged_values, schema=schema_data)
-                delete_error_files(service_path)
-            except ValidationError as err:
-                error_found = True
-                error_location = "/".join(find_full_error_path(err))
-                print(f"ERROR: validation failure for {service_path}/{instance_file}")
-                print(f"reason: {err.message} at {error_location}\n")
+            merged_values = merge_yaml_files(service_path, instance_file)
+
+            validator = Draft7Validator(schema_data)
+            errors = list(validator.iter_errors(merged_values))
+
+            if errors:
+                base_file = "-".join(instance_file.split("-")[:2]) + ".yaml"
+                print(
+                    f"Validation errors for {instance_file} or {base_file} or values.yaml:"
+                )
+                for error in errors:
+                    print(f"- {error.message}")
                 output_file = service_path / f"error-merged-{instance_file}"
                 with output_file.open("w", encoding="utf8") as out:
                     out.write(
                         f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v${chart_version}/schema-platform-managed-chart-strict.json\n"
                     )
                     yaml.dump(merged_values, out)
+                sys.exit(1)
 
-            except Exception as err:
-                error_found = True
-                print(f"ERROR: unexpected validation error for {service_path}/{instance_file}")
-                print(f"reason: {err}\n")
-
-    sys.exit(1 if error_found else 0)
+            delete_error_files(service_path)
 
 
 if __name__ == "__main__":
