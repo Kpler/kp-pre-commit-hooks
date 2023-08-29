@@ -152,9 +152,10 @@ def main():
             errors = list(validator.iter_errors(merged_values))
 
             if errors:
+                error_found = True
                 base_file = "-".join(instance_file.split("-")[:2]) + ".yaml"
                 print(
-                    f"Validation errors for {instance_file} or {base_file} or values.yaml:"
+                    f"\nERROR: Validation errors for {service_path} in {instance_file}, {base_file} or values.yaml:"
                 )
                 for error in errors:
                     print(f"- {error.message}")
@@ -164,11 +165,12 @@ def main():
                         f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v${chart_version}/schema-platform-managed-chart-strict.json\n"
                     )
                     yaml.dump(merged_values, out)
-                sys.exit(1)
 
             delete_error_files(service_path)
+
+    if error_found:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     main()
-
