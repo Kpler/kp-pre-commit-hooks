@@ -158,7 +158,9 @@ def main():
                     f"\nERROR: Validation errors for {service_path} in {instance_file}, {base_file} or values.yaml:"
                 )
                 for error in errors:
-                    print(f"- {error.message}")
+                    error_location = "/".join(find_full_error_path(error)) or "the root"
+                    print(f"  - {error.message} at {error_location}")
+
                 output_file = service_path / f"error-merged-{instance_file}"
                 with output_file.open("w", encoding="utf8") as out:
                     out.write(
