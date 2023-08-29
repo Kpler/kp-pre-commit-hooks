@@ -6,7 +6,7 @@ from itertools import chain
 from pathlib import Path
 
 import requests
-import urllib3
+import urllib3.exceptions
 from jsonschema import Draft7Validator
 from ruamel.yaml import YAML
 
