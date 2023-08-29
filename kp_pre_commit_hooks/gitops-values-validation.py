@@ -8,6 +8,8 @@ from pathlib import Path
 import requests
 import urllib3.exceptions
 from jsonschema import Draft7Validator
+from jsonschema_specifications import REGISTRY
+from referencing import Registry, Resource
 from ruamel.yaml import YAML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,6 +18,14 @@ SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaw
 GITOPS_DIR = Path("gitops")
 
 yaml = YAML()
+
+
+def retrieve_schema_via_request(uri):
+    response = requests.get(uri)
+    return Resource.from_contents(response.json())
+
+
+SCHEMA_REGISTRY = REGISTRY.combine(Registry(retrieve=retrieve_schema_via_request))
 
 
 def download_json_schema_for_chart_version(version):
@@ -152,7 +162,7 @@ def main():
         ):
             instance_file = instance_file_path.name
             merged_values = merge_service_values_files(service_path, instance_file)
-            validator = Draft7Validator(schema_data)
+            validator = Draft7Validator(schema_data, registry=SCHEMA_REGISTRY)  # type: ignore
             errors = list(validator.iter_errors(merged_values))
 
             if errors:
