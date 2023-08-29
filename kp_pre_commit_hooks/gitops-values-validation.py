@@ -45,7 +45,11 @@ def verify_values_files_schema_version(version, directory=Path(".")):
                 if schema_version != version:
                     print(f"ERROR: validation failure for {directory}/{filename}")
                     print(
-                        f"reason: JSON schema version in '{line}' does not match version in Chart.yaml"
+                        f"reason: JSON schema version in '{line}' does not match version {version} in Chart.yaml"
+                    )
+                    # Let's automatically fix the version in the file on the way
+                    filename.write_text(
+                        value_file.replace(line, line.replace(schema_version, version))
                     )
                     return False
     return True
