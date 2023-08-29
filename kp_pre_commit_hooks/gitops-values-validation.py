@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-manager-chart"
+SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart"
 GITOPS_DIR = Path("gitops")
 
 yaml = YAML()
