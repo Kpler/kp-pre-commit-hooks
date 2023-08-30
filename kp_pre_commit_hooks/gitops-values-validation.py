@@ -172,8 +172,6 @@ def main():
                     f"\nERROR: Validation errors for {service_path} in {instance_file}, {base_file} or values.yaml:"
                 )
                 for error in errors:
-                    print(find_full_error_path(error))
-                    #error_location = "/".join(find_full_error_path(error)) or "the root"
                     error_location = "/".join(str(x) for x in find_full_error_path(error)) or "the root"
                     print(f"  - {error.message} at {error_location}")
 
