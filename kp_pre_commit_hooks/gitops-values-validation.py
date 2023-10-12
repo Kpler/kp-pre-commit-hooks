@@ -125,6 +125,9 @@ def main():
 
     # Iterate over direct subdirectories inside GITOPS_DIR
     for service_path in GITOPS_DIR.glob("*/*"):
+        if not service_path.is_dir():
+            continue
+
         chart_file = service_path / "Chart.yaml"
         value_file = service_path / "values.yaml"
         if not (chart_file.is_file() and value_file.is_file()):
