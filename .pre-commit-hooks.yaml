@@ -40,5 +40,5 @@
     language: script
     entry: ./kafka-check-local-schemas.sh
     stages: [commit]
-    always_run: true
+    files: ^(schemas/|src/main/scala/[^/]+/models/)
     pass_filenames: false
