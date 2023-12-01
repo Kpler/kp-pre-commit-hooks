@@ -28,4 +28,4 @@ function check_binary_exists() {
 
 check_binary_exists "sbt"
 
-sbt "runMain tools.generateSchemaFile schemas/schema.json"
+sbt -batch -error "set fork := false; runMain tools.generateSchemaFile schemas/schema.json"
