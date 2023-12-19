@@ -37,20 +37,36 @@ get_md5sum() {
   md5sum "${file}" | awk '{ print $1}'
 }
 
-
-find_schema_class() {
+find_schema_class_file() {
   # The schema class heuristic is a bit hacky for now, we just expect
   # the filename containing the schema code to end with Schema or is named InputModel
   # We might want to improve this in the future
-  schema_class_file="$(find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1)"
+  find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1 || return 0
+}
+
+find_schema_class() {
+  local schema_class_file="$1"
   schema_class_name="$(basename "${schema_class_file}" .scala)"
   schema_package="$(awk ' $1 == "package" { print $2 }' "${schema_class_file}")"
 
   echo "${schema_package}.${schema_class_name}"
 }
 
+find_avro_library() {
+  local schema_class_file="$1"
+
+  if grep -q "import com.sksamuel.avro4s" "${schema_class_file}"; then
+    echo "avro4s"
+  elif grep -q "import vulcan" "${schema_class_file}"; then
+    echo "vulcan"
+  else
+    error "Could not find any avro library import in ${schema_class_file}"
+  fi
+
+}
+
 generate_schema_generator_code() {
-  local schema_class="$1"
+  local schema_class="$1" schema_library="$2"
 
   schema_class_name="${schema_class##*.}"
   schema_package="${schema_class%.*}"
@@ -60,7 +76,7 @@ generate_schema_generator_code() {
   sed \
     -e "s/__SCHEMA_CLASS_NAME__/${schema_class_name}/g" \
     -e "s/__SCHEMA_PACKAGE__/${schema_package}/g" \
-    "${SCRIPT_DIR}/generators/VulcanSchemaGenerator.tmpl.scala"
+    "${SCRIPT_DIR}/generators/${schema_library^}SchemaGenerator.tmpl.scala"
 }
 
 run_schema_generator_code() {
@@ -96,7 +112,13 @@ generator_code_file="${generator_source_folder}/SchemaGenerator.scala"
 
 [[ ! -f "${target_schema_file}" ]] || checksum_before="$(get_md5sum "${target_schema_file}")"
 
-generate_schema_generator_code "$(find_schema_class)" > "${generator_code_file}"
+schema_class_file="$(find_schema_class_file)"
+[[ -n "${schema_class_file}" ]] || error "Could not find any schema class file"
+
+schema_class="$(find_schema_class "${schema_class_file}")"
+schema_library="$(find_avro_library "${schema_class_file}")"
+
+generate_schema_generator_code "${schema_class}" "${schema_library}" > "${generator_code_file}"
 run_schema_generator_code "${generator_code_file}" "${target_schema_file}"
 
 if ! is_git_tracked "${target_schema_file}"; then
@@ -105,5 +127,5 @@ fi
 
 checksum_after="$(get_md5sum "${target_schema_file}")"
 if [[ "${checksum_after}" != "${checksum_before:-}" ]]; then
-  error "Schema file \"${target_schema_file}\" was not consistent with code. Please commit the updated version."
+  error "Schema file \"${target_schema_file}\" was missing or not consistent with code. Please commit the updated version."
 fi
