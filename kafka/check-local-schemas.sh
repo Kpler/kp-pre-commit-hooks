@@ -95,6 +95,8 @@ run_schema_generator_code() {
   sbt_command+="runMain kp_pre_commit_hooks.generateSchemaFile ${target_schema_file}"
 
   sbt -batch -error "${sbt_command}"
+  # Add a last linefeed to make pre-commit end-of-line fixer happy
+  echo >> "${target_schema_file}"
 }
 
 #####################################################################
