@@ -1,5 +1,5 @@
 #!/bin/sh
-
+set -x
 # Use parameter passed to the script or default to master
 TARGET_BRANCH="${1:-main}"
 
