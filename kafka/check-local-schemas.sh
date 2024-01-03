@@ -38,10 +38,19 @@ get_md5sum() {
 }
 
 find_schema_class_file() {
-  # The schema class heuristic is a bit hacky for now, we just expect
-  # the filename containing the schema code to end with Schema or is named InputModel
+  # The schema class heuristic is a bit hacky for now, we try to find a file
+  # where a class has been annotated with the schema annotation
+  # Otherwise we fallback on finding the filename containing the schema code
+  # to end with Schema or is named InputModel
   # We might want to improve this in the future
-  find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1 || return 0
+  schema_class_file="$(grep -lr "^@schema" src | head -n 1 || return 0)"
+
+  if [[ -z "${schema_class_file}" ]]; then
+    schema_class_file="$(find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1 || return 0)"
+  fi
+
+  echo "${schema_class_file}"
+
 }
 
 find_schema_class() {
