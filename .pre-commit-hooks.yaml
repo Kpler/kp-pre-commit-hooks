@@ -34,3 +34,11 @@
     stages: [commit]
     always_run: true
     pass_filenames: false
+
+-   id: kafka-check-schemas
+    name: Check if local Kafka Schemas are up to date with code
+    language: script
+    entry: ./kafka/check-local-schemas.sh
+    stages: [commit]
+    files: ^(schemas/|src/main/scala/[^/]+/models/)
+    pass_filenames: false
