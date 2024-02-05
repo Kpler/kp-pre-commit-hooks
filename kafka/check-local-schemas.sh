@@ -61,12 +61,27 @@ find_schema_class() {
   echo "${schema_package}.${schema_class_name}"
 }
 
+is_library_used() {
+  local library="$1" candidate_class_file="$2"
+
+  # if the library is not directly found in the candidate class file
+  # we fallback on checking the build.sbt file itself
+  # This doesn't fully protect against from indirect library loading
+  # but it's a good enough heuristic for now
+  for candidate in "${candidate_class_file}" build.sbt; do
+    if grep -q -E "[^#]*${library}" "${candidate}"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 find_avro_library() {
   local schema_class_file="$1"
 
-  if grep -q "import com.sksamuel.avro4s" "${schema_class_file}"; then
+  if is_library_used "com.sksamuel.avro4s" "${schema_class_file}"; then
     echo "avro4s"
-  elif grep -q "import vulcan" "${schema_class_file}"; then
+  elif is_library_used "vulcan" "${schema_class_file}"; then
     echo "vulcan"
   else
     error "Could not find any avro library import in ${schema_class_file}"
@@ -101,6 +116,10 @@ run_schema_generator_code() {
   # to the existing source code, so we can run our generator code alongside the existing code
   # We need that as the generator code import the schema class
   sbt_command+="set Compile / unmanagedSourceDirectories += file(\"${generator_source_folder}\");"
+  # Dynamically add the required dependencies to the build.sbt file
+  sbt_command+="set libraryDependencies += \"com.lihaoyi\" %% \"upickle\" % \"3.1.3\";"
+  sbt_command+="set libraryDependencies += \"com.lihaoyi\" %% \"os-lib\" % \"0.9.1\";"
+
   sbt_command+="runMain kp_pre_commit_hooks.generateSchemaFile ${target_schema_file}"
 
   sbt -batch -error "${sbt_command}"
