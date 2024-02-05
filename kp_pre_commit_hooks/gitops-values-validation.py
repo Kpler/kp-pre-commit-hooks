@@ -211,7 +211,10 @@ class ServiceInstanceConfigValidator:
 
     @cached_property
     def validator(self) -> Validator:
-        return Draft7Validator(self.service_instance_config.helm_chart.json_schema, registry=SCHEMA_REGISTRY)  # type: ignore
+        validator_class = validators.validates("draft7")(
+            validators.extend(Draft7Validator, validators={"additionalChecks": self.validate_additional_checks})
+        )
+        return validator_class(self.service_instance_config.helm_chart.json_schema, registry=SCHEMA_REGISTRY)
 
     def validate_configuration(self) -> Sequence[Union[ValidationError, SchemaValidationError]]:
         try:
@@ -237,6 +240,11 @@ class ServiceInstanceConfigValidator:
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
+
+    def validate_additional_checks(self, validator, additional_checks, value, schema):
+        for check in additional_checks:
+            if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
+                yield from check_method(value, schema)
 
 
 def format_error(error: Union[ValidationError, SchemaValidationError]):
