@@ -116,6 +116,10 @@ run_schema_generator_code() {
   # to the existing source code, so we can run our generator code alongside the existing code
   # We need that as the generator code import the schema class
   sbt_command+="set Compile / unmanagedSourceDirectories += file(\"${generator_source_folder}\");"
+  # Dynamically add the required dependencies to the build.sbt file
+  sbt_command+="set libraryDependencies += \"com.lihaoyi\" %% \"upickle\" % \"3.1.3\";"
+  sbt_command+="set libraryDependencies += \"com.lihaoyi\" %% \"os-lib\" % \"0.9.1\";"
+
   sbt_command+="runMain kp_pre_commit_hooks.generateSchemaFile ${target_schema_file}"
 
   sbt -batch -error "${sbt_command}"
