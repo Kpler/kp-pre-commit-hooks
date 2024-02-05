@@ -246,6 +246,12 @@ class ServiceInstanceConfigValidator:
             if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
                 yield from check_method(value, schema)
 
+    def validate_topic_name_compliance(self, value, schema):
+        match = TOPIC_NAME_REGEXP.match(str(value))
+        service_name = self.service_instance_config.service_name
+        if match and match["serviceName"] != service_name:
+            yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
+
 
 def format_error(error: Union[ValidationError, SchemaValidationError]):
     if isinstance(error, SchemaValidationError):
