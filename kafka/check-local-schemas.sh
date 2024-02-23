@@ -47,14 +47,16 @@ find_schema_class_file() {
   # Otherwise we fallback on finding the filename containing the schema code
   # to end with Schema or is named InputModel
   # We might want to improve this in the future
-  schema_class_file="$(grep -lr "^@schema" src | head -n 1 || return 0)"
+  schema_class_files="$(grep -lr "^@schema" src || return 0)"
 
-  if [[ -z "${schema_class_file}" ]]; then
-    schema_class_file="$(find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1 || return 0)"
-  fi
+  #if [[ -z "${schema_class_file}" ]]; then
+  #  schema_class_file="$(find src -name "*Schema.scala" -o -name "InputModel.scala" | head -n 1 || return 0)"
+  #fi
 
-  echo "${schema_class_file}"
-
+  for schema_class_file in $(grep -lr "^@schema" src)
+  do	  
+    echo $schema_class_file
+  done
 }
 
 find_schema_class() {
@@ -142,27 +144,34 @@ trap clean_temporary_folder EXIT
 
 check_binary_exists "sbt"
 
-target_schema_file="schemas/schema.avsc"
+target_dir_schema="schemas"
 
 generator_source_folder="$(mktemp -d)"
 generator_code_file="${generator_source_folder}/SchemaGenerator.scala"
 
-[[ ! -f "${target_schema_file}" ]] || checksum_before="$(get_md5sum "${target_schema_file}")"
+schema_class_files="$(find_schema_class_file)"
+[[ -n "${schema_class_files}" ]] || error "Could not find any schema class file"
 
-schema_class_file="$(find_schema_class_file)"
-[[ -n "${schema_class_file}" ]] || error "Could not find any schema class file"
+for schema_class_file in $schema_class_files
+do
+  schema_class="$(find_schema_class "${schema_class_file}")"
+  schema_library="$(find_avro_library "${schema_class_file}")"
 
-schema_class="$(find_schema_class "${schema_class_file}")"
-schema_library="$(find_avro_library "${schema_class_file}")"
+  class_name="${schema_class##*.}"
+  target_schema_file="$target_dir_schema/$class_name.avsc"
+  
+  [[ ! -f "${target_schema_file}" ]] || checksum_before="$(get_md5sum "${target_schema_file}")"
 
-generate_schema_generator_code "${schema_class}" "${schema_library}" > "${generator_code_file}"
-run_schema_generator_code "${generator_code_file}" "${target_schema_file}"
+  generate_schema_generator_code "${schema_class}" "${schema_library}" > "${generator_code_file}"
+  run_schema_generator_code "${generator_code_file}" "${target_schema_file}"
 
-if ! is_git_tracked "${target_schema_file}"; then
-  error "Schema file \"${target_schema_file}\" is not tracked by git. Please commit it."
-fi
+  if ! is_git_tracked "${target_schema_file}"; then
+    error "Schema file \"${target_schema_file}\" is not tracked by git. Please commit it."
+  fi
 
-checksum_after="$(get_md5sum "${target_schema_file}")"
+  checksum_after="$(get_md5sum "${target_schema_file}")"
 if [[ "${checksum_after}" != "${checksum_before:-}" ]]; then
   error "Schema file \"${target_schema_file}\" was missing or not consistent with code. Please commit the updated version."
 fi
+
+done
