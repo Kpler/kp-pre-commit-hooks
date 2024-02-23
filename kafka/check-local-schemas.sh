@@ -32,6 +32,10 @@ is_git_tracked() {
     git ls-files --error-unmatch "$1" &> /dev/null || return 1
 }
 
+get_repository_url() {
+  git remote get-url origin
+}
+
 get_md5sum() {
   local file="$1"
   md5sum "${file}" | awk '{ print $1}'
@@ -132,6 +136,9 @@ run_schema_generator_code() {
 #####################################################################
 
 trap clean_temporary_folder EXIT
+
+# We don't want to run on template repositories
+[[ "$(get_repository_url)" != "git@github.com:Kpler/template-"* ]] || exit 0
 
 check_binary_exists "sbt"
 
