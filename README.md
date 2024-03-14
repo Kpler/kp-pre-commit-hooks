@@ -16,6 +16,7 @@ Add this to your `.pre-commit-config.yaml`
         -   id: check-branch-name
         -   id: no-ephemeral-links
             exclude: '\.md$'
+        # [...] add other specific hook id relevant from your project
 ```
 
 ### Hooks available
@@ -41,7 +42,17 @@ Consequently to keep the code futureproof we don't
 want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
 
 #### `fastapi-generate-openapi-specification`
+
 Generate the Open API spec from a Fast API. If it has changed, write the new one and fails. If not, succeeds.
+
+#### `kafka-check-schemas`
+
+This hook is specific to Kafka Stream or Kafka Producers application and will check that the repositories contains AVRO schemas files, under the `schemas/` folder, that are consistent with the code.
+The presence of such schemas is required by the Kpler GitHub actions [check-kafka-schemas-compatibility] and [upload-kafka-schemas] and is also mandatory for Kafka application deployment in Kubernetes.
+
+[check-kafka-schemas-compatibility]: https://github.com/Kpler/github-actions/blob/main/actions/kafka/check-kafka-schemas-compatibility/README.md
+[upload-kafka-schemas]: https://github.com/Kpler/github-actions/blob/main/actions/kafka/upload-kafka-schemas/README.md
+
 
 ### Contributing
 
