@@ -207,12 +207,30 @@ class ServiceInstanceConfig:
 class ServiceInstanceConfigValidator:
 
     IGNORED_VALIDATION_ERRORS = {
-        # These 2 service names are longer than the maximum allowed (36 characters)
+        # These below project have service names are longer than the maximum allowed (36 characters)
+        # or have application name not prefixed with the service name
         # but we ignore these errors as these services were created before the rule was in place
-        "$.platform-managed-chart.serviceName": [
-            "earth-observation-product-catalog-api",
-            "stream-merge-and-apply-matches-export-bol",
-        ]
+        "stream-merge-and-apply-matches-import-bol": {
+            "$.platform-managed-chart.serviceName": [
+                "'stream-merge-and-apply-matches-import-bol' is too long, the maximum length is 36"
+            ]
+        },
+        "stream-merge-and-apply-matches-export-bol": {
+            "$.platform-managed-chart.serviceName": [
+                "'stream-merge-and-apply-matches-export-bol' is too long, the maximum length is 36"
+            ]
+        },
+        "earth-observation-product-catalog-api": {
+            "$.platform-managed-chart.serviceName": [
+                "'earth-observation-product-catalog-api' is too long, the maximum length is 36"
+            ]
+        },
+        "apply-edits-exportbol-jdbc": {
+            "$.platform-managed-chart.serviceName": ["'sink' does not match the service folder name 'apply-edits-exportbol-jdbc'"]
+        },
+        "apply-edits-importbol-jdbc": {
+            "$.platform-managed-chart.serviceName": ["'sink' does not match the service folder name 'apply-edits-exportbol-jdbc'"]
+        },
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
@@ -227,11 +245,11 @@ class ServiceInstanceConfigValidator:
 
     def validate_configuration(self) -> Sequence[Union[ValidationError, SchemaValidationError]]:
         try:
-            validation_errors = list(
-                error
-                for error in self.validator.iter_errors((self.service_instance_config.configuration))
-                if not self.is_ignored_error(error)
-            )
+            raw_validation_errors = [
+                self.enrich_error_message(error)
+                for error in self.validator.iter_errors(self.service_instance_config.configuration)
+            ]
+            validation_errors = [error for error in raw_validation_errors if not self.is_ignored_error(error)]
             schema_validation_errors = list(self.iter_schema_validation_errors())
             return validation_errors + schema_validation_errors
 
@@ -254,13 +272,23 @@ class ServiceInstanceConfigValidator:
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
 
-    def is_ignored_error(self, error: ValidationError):
-        return error.instance in self.IGNORED_VALIDATION_ERRORS.get(error.json_path, [])
+    def enrich_error_message(self, error: ValidationError) -> ValidationError:
+        if error.message.endswith("is too long") and error.schema.get("maxLength"):
+            error.message += f', the maximum length is {error.schema["maxLength"]}'
+        return error
+
+    def is_ignored_error(self, error: ValidationError) -> bool:
+        ignored_errors_for_service = self.IGNORED_VALIDATION_ERRORS.get(self.service_instance_config.service_name, {})
+        return error.message in ignored_errors_for_service.get(error.json_path, [])
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
         for check in additional_checks:
             if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
                 yield from check_method(value, schema)
+
+    def validate_service_name_matches_service_folder(self, value, schema):
+        if service_instance_config.path.name != value:
+            yield ValidationError(f"'{value}' does not match the service folder name '{service_instance_config.path.name}'")
 
     def validate_topic_name_compliance(self, value, schema):
         match = TOPIC_NAME_REGEXP.match(str(value))
