@@ -158,10 +158,10 @@ class ValuesFile:
     def set_header_schema_version(self, version):
         if self.header_schema_version == version:
             return
-        header = f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart.json\n"
+        header = f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart.json"
         content = self.path.read_text()
         if self.header_schema_version is None:
-            self.path.write_text(header + content)
+            self.path.write_text(header + "\n" + content)
         else:
             self.path.write_text(SCHEMA_HEADER_REGEXP.sub(header, content))
 
