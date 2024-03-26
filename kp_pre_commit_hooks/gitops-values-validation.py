@@ -216,6 +216,7 @@ class ServiceInstanceConfigValidator:
                 "'flows-staticdata-consumer-coal' does not match the service folder name 'flows-staticdata-consumer'",
                 "'flows-staticdata-consumer-lpg' does not match the service folder name 'flows-staticdata-consumer'",
                 "'flows-staticdata-consumer-lng' does not match the service folder name 'flows-staticdata-consumer'",
+                "'flows-staticdata-consumer-commodities' is too long, the maximum length is 36",
             ]
         },
         "stream-merge-and-apply-matches-import-bol": {
