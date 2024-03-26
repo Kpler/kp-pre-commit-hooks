@@ -210,6 +210,14 @@ class ServiceInstanceConfigValidator:
         # These below project have service names are longer than the maximum allowed (36 characters)
         # or have application name not prefixed with the service name
         # but we ignore these errors as these services were created before the rule was in place
+        "flows-staticdata-consumer": {
+            "$.platform-managed-chart.serviceName": [
+                "'flows-staticdata-consumer-commodities' does not match the service folder name 'flows-staticdata-consumer'",
+                "'flows-staticdata-consumer-coal' does not match the service folder name 'flows-staticdata-consumer'",
+                "'flows-staticdata-consumer-lpg' does not match the service folder name 'flows-staticdata-consumer'",
+                "'flows-staticdata-consumer-lng' does not match the service folder name 'flows-staticdata-consumer'",
+            ]
+        },
         "stream-merge-and-apply-matches-import-bol": {
             "$.platform-managed-chart.serviceName": [
                 "'stream-merge-and-apply-matches-import-bol' is too long, the maximum length is 36"
