@@ -255,7 +255,7 @@ class ServiceInstanceConfigValidator:
                 )
 
     def is_ignored_error(self, error: ValidationError):
-        return self.IGNORED_VALIDATION_ERRORS[error.json_path] == error.instance
+        return error.instance in self.IGNORED_VALIDATION_ERRORS.get(error.json_path, [])
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
         for check in additional_checks:
