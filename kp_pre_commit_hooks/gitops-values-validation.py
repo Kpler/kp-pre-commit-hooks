@@ -206,6 +206,15 @@ class ServiceInstanceConfig:
 
 class ServiceInstanceConfigValidator:
 
+    IGNORED_VALIDATION_ERRORS = {
+        # These 2 service names are longer than the maximum allowed (36 characters)
+        # but we ignore these errors as these services were created before the rule was in place
+        "$.platform-managed-chart.serviceName": [
+            "earth-observation-product-catalog-api",
+            "stream-merge-and-apply-matches-export-bol",
+        ]
+    }
+
     def __init__(self, service_instance_config: ServiceInstanceConfig):
         self.service_instance_config = service_instance_config
 
@@ -218,7 +227,11 @@ class ServiceInstanceConfigValidator:
 
     def validate_configuration(self) -> Sequence[Union[ValidationError, SchemaValidationError]]:
         try:
-            validation_errors = list(self.validator.iter_errors((self.service_instance_config.configuration)))
+            validation_errors = list(
+                error
+                for error in self.validator.iter_errors((self.service_instance_config.configuration))
+                if not self.is_ignored_error(error)
+            )
             schema_validation_errors = list(self.iter_schema_validation_errors())
             return validation_errors + schema_validation_errors
 
@@ -240,6 +253,9 @@ class ServiceInstanceConfigValidator:
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
+
+    def is_ignored_error(self, error: ValidationError):
+        return self.IGNORED_VALIDATION_ERRORS[error.json_path] == error.instance
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
         for check in additional_checks:
