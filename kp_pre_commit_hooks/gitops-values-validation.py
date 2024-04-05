@@ -297,8 +297,8 @@ class ServiceInstanceConfigValidator:
                 yield from check_method(value, schema)
 
     def validate_service_name_matches_service_folder(self, value, schema):
-        if service_instance_config.path.name != value:
-            yield ValidationError(f"'{value}' does not match the service folder name '{service_instance_config.path.name}'")
+        if self.service_instance_config.path.name != value:
+            yield ValidationError(f"'{value}' does not match the service folder name '{self.service_instance_config.path.name}'")
 
     def validate_topic_name_compliance(self, value, schema):
         match = TOPIC_NAME_REGEXP.match(str(value))
