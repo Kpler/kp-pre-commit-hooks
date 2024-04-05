@@ -43,6 +43,28 @@ want links to ephemeral thrid party stuff (slack, clubhouse, atlassian)
 #### `fastapi-generate-openapi-specification`
 Generate the Open API spec from a Fast API. If it has changed, write the new one and fails. If not, succeeds.
 
+#### `kafka-check-schemas`
+
+Check that the Kafka schemas present in the `schemas/` folder are consistent with the code.
+
+This hook currently only supports the `scala` language for now and relies on the presence of the `sbt generateKafkaSchemas` command to re-generate and compare the schemas.
+
+The implementation of the `generateKafkaSchemas` is up to each project, but you can find an [example of implementation] in the `template-kafka-stream-msk` project with the corresponding [sbt command] defined in the `build.sbt` file
+
+Add these lines in your `.pre-commit-config.yaml` file to enable this pre-commit hook:
+```yaml
+repos:
+  # [...]
+  - repo: https://github.com/Kpler/kp-pre-commit-hooks.git
+    rev: v0.22.0
+    hooks:
+      # [...]
+      - id: kafka-check-schemas
+```
+
+[example of implementation]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/src/ci/scala/schema_generator/VulcanSchemaGenerator.scala
+[sbt command]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/build.sbt#L75
+
 ### Contributing
 
 #### Debugging / testing
