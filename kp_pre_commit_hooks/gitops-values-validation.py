@@ -1,7 +1,6 @@
 import re
 import sys
 import textwrap
-from concurrent.futures import ProcessPoolExecutor as WorkerPool
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
@@ -337,23 +336,17 @@ def display_errors(
 # Main code
 ###############################################################################
 
-
-def validate_service_instance_config(service_instance_config):
-    validator = ServiceInstanceConfigValidator(service_instance_config)
-    return service_instance_config, validator.validate_configuration()
-
-
 if __name__ == "__main__":
     gitops_path = Path(sys.argv[1]) if len(sys.argv) >= 2 else Path.cwd()
     gitops_repository = GitOpsRepository(gitops_path)
 
     try:
         errors_found = False
-
-        worker_pool = WorkerPool(max_workers=10)
-        service_instances_config_iter = gitops_repository.iter_service_instances_config()
-        for service_instance_config, errors in worker_pool.map(validate_service_instance_config, service_instances_config_iter):
+        for service_instance_config in gitops_repository.iter_service_instances_config():
             print(f"Checking {service_instance_config} ", end="")
+
+            validator = ServiceInstanceConfigValidator(service_instance_config)
+            errors = validator.validate_configuration()
             if not errors:
                 print(green("PASSED"))
             else:
@@ -372,6 +365,3 @@ if __name__ == "__main__":
             f"       More info at {TWINGATE_DOC_URL}\n\n"
         )
         sys.exit(1)
-
-    finally:
-        worker_pool.shutdown()
