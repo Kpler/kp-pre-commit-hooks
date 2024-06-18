@@ -241,7 +241,7 @@ class ServiceInstanceConfigValidator:
             "$.platform-managed-chart.serviceName": ["'sink' does not match the service folder name 'apply-edits-exportbol-jdbc'"]
         },
         "maritime-news-strapi-api": {
-            "$.extra": ["Additional properties are not allowed ('extra' was unexpected)"]
+            "$.extra": ["'extra' was unexpected"]
         },
     }
 
