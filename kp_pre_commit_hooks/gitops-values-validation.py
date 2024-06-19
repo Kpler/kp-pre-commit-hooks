@@ -240,6 +240,9 @@ class ServiceInstanceConfigValidator:
         "apply-edits-importbol-jdbc": {
             "$.platform-managed-chart.serviceName": ["'sink' does not match the service folder name 'apply-edits-exportbol-jdbc'"]
         },
+        "maritime-news-strapi-api": {
+            "$": ["Additional properties are not allowed ('extra' was unexpected)"]
+        },
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
