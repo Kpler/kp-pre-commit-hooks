@@ -51,8 +51,9 @@ def deep_merge(*sources) -> dict:
     result = {}
     for dictionary in sources:
         for key, value in dictionary.items():
-            if isinstance(value, dict):
-                result[key] = deep_merge(result.setdefault(key, {}), value)
+            current_value = result.get(key, None)
+            if isinstance(value, dict) and isinstance(current_value, dict):
+                result[key] = deep_merge(current_value, value)
             else:
                 result[key] = value
     return result
