@@ -258,7 +258,11 @@ class ServiceInstanceConfigValidator:
             "$.platform-managed-chart.image.repository": [
                 "'eta_picker' does not match '^(dev|stable)/'",
                 "'eta-picker-stage' does not match '^(dev|stable)/'",
-            ]
+            ],
+            "$.platform-managed-chart.api.secrets": [
+                "'cnt-analytics-prod-dbInstanceIdentifier', 'cnt-analytics-prod-engine', 'cnt-analytics-prod-host', 'cnt-analytics-prod-password', 'cnt-analytics-prod-port', 'cnt-analytics-prod-username' do not match any of the regexes: '^[a-zA-Z0-9_]+$'",
+                "'cnt-analytics-dev-dbInstanceIdentifier', 'cnt-analytics-dev-engine', 'cnt-analytics-dev-host', 'cnt-analytics-dev-password', 'cnt-analytics-dev-port', 'cnt-analytics-dev-username' do not match any of the regexes: '^[a-zA-Z0-9_]+$'",
+            ],
         },
         "api-consumer": {"$.platform-managed-chart.image.repository": ["'apiconsumer' does not match '^(dev|stable)/'"]},
         "waiting-production": {
