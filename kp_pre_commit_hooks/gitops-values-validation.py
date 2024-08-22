@@ -241,8 +241,55 @@ class ServiceInstanceConfigValidator:
         "apply-edits-importbol-jdbc": {
             "$.platform-managed-chart.serviceName": ["'sink' does not match the service folder name 'apply-edits-exportbol-jdbc'"]
         },
-        "maritime-news-strapi-api": {
-            "$": ["Additional properties are not allowed ('extra' was unexpected)"]
+        "maritime-news-strapi-api": {"$": ["Additional properties are not allowed ('extra' was unexpected)"]},
+        # These below projects use images from legacy MT Docker repository that doesn't follow kpler conventions
+        "cnt-data-pipelines-static-data": {
+            "$.platform-managed-chart.image.repository": ["'cnt2_data_pipelines_static_data' does not match '^(dev|stable)/'"]
+        },
+        "trips-central": {"$.platform-managed-chart.image.repository": ["'trips-central' does not match '^(dev|stable)/'"]},
+        "product-usage-metrics": {
+            "$.platform-managed-chart.image.repository": ["'product_usage_metrics' does not match '^(dev|stable)/'"]
+        },
+        "fleet-manager": {
+            "$.platform-managed-chart.image.repository": ["'intransit-fleet-manager' does not match '^(dev|stable)/'"]
+        },
+        "underway-v2": {"$.platform-managed-chart.image.repository": ["'underway' does not match '^(dev|stable)/'"]},
+        "eta-picker": {
+            "$.platform-managed-chart.image.repository": [
+                "'eta_picker' does not match '^(dev|stable)/'",
+                "'eta-picker-stage' does not match '^(dev|stable)/'",
+            ]
+        },
+        "api-consumer": {"$.platform-managed-chart.image.repository": ["'apiconsumer' does not match '^(dev|stable)/'"]},
+        "waiting-production": {
+            "$.platform-managed-chart.image.repository": ["'waiting-production' does not match '^(dev|stable)/'"]
+        },
+        "waiting-mt-data": {"$.platform-managed-chart.image.repository": ["'waiting-mt-data' does not match '^(dev|stable)/'"]},
+        "cnt-db-migrations": {
+            "$.platform-managed-chart.image.repository": ["'cnt_db_migrations' does not match '^(dev|stable)/'"]
+        },
+        "l2-data-models": {"$.platform-managed-chart.image.repository": ["'l2_data_models' does not match '^(dev|stable)/'"]},
+        "graph-data-model": {"$.platform-managed-chart.image.repository": ["'graph_data_model' does not match '^(dev|stable)/'"]},
+        "scac-gpt": {"$.platform-managed-chart.image.repository": ["'scac_gpt' does not match '^(dev|stable)/'"]},
+        "cnt-data-pipelines-dynamic-data": {
+            "$.platform-managed-chart.image.repository": ["'cnt2_data_pipelines_dynamic_data' does not match '^(dev|stable)/'"]
+        },
+        "cnt-fetch-calls-api": {"$.platform-managed-chart.image.repository": ["'fetchcallsapi' does not match '^(dev|stable)/'"]},
+        "waiting-training": {"$.platform-managed-chart.image.repository": ["'waiting_training' does not match '^(dev|stable)/'"]},
+        "linescape-schedules": {
+            "$.platform-managed-chart.image.repository": ["'linescape_schedules' does not match '^(dev|stable)/'"]
+        },
+        "eta-batch-snap": {"$.platform-managed-chart.image.repository": ["'etabatchsnap' does not match '^(dev|stable)/'"]},
+        "north-star": {"$.platform-managed-chart.image.repository": ["'north_star_metrics' does not match '^(dev|stable)/'"]},
+        "cnt-tnt-data-cleaning": {
+            "$.platform-managed-chart.image.repository": ["'tntdatacleaning' does not match '^(dev|stable)/'"]
+        },
+        "demo-shipments": {"$.platform-managed-chart.image.repository": ["'demo_shipments' does not match '^(dev|stable)/'"]},
+        "next-port-prediction": {
+            "$.platform-managed-chart.image.repository": ["'next_port_prediction' does not match '^(dev|stable)/'"]
+        },
+        "waiting-statistics": {
+            "$.platform-managed-chart.image.repository": ["'waiting_statistics' does not match '^(dev|stable)/'"]
         },
     }
 
