@@ -19,7 +19,7 @@ from termcolor import colored
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ###############################################################################
-# Main code
+# Global Parameters
 ###############################################################################
 
 SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart"
@@ -31,6 +31,15 @@ SCHEMA_HEADER_REGEXP = re.compile(
 TOPIC_NAME_REGEXP = re.compile(r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9]*(-[0-9]+)?(\.[a-z0-9]+)?$")
 
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
+
+FORBIDDEN_ENVIRONMENT_VARIABLES = {
+    "KAFKA_APPLICATION_ID": """KAFKA_APPLICATION_ID is automatically set in your container and should not be overridden.
+More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
+    "KAFKA_BOOTSTRAP_SERVERS": """KAFKA_BOOTSTRAP_SERVERS is automatically set in your container and should not be overridden.
+More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
+    "SCHEMA_REGISTRY_URL": """SCHEMA_REGISTRY_URL is automatically set in your container and should not be overridden.
+More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
+}
 
 ###############################################################################
 # Generic Helper functions and classes
@@ -362,6 +371,16 @@ class ServiceInstanceConfigValidator:
         service_name = self.service_instance_config.service_name
         if match and match["serviceName"] != service_name:
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
+
+    def validate_forbidden_environment_variables(self, value, schema):
+        if not isinstance(value, dict):
+            return
+        for env_variable, forbidden_reason in FORBIDDEN_ENVIRONMENT_VARIABLES.items():
+            if env_variable in value:
+                yield ValidationError(
+                    f"Environment variable `{env_variable}` is not allowed to be manually set",
+                    schema={"description": f"Remove `{env_variable}` from your environment variables.\n{forbidden_reason}"},
+                )
 
 
 def format_error(error: Union[ValidationError, SchemaValidationError]):
