@@ -2,9 +2,9 @@
 # cf https://github.com/Kpler/ct-webserver#option-2-using-nix
 let
   nixpkgs = builtins.fetchTarball {
-    name   = "nixos-23.05-20230814";
-    url    = "https://github.com/NixOS/nixpkgs/archive/720e61ed8de1.tar.gz";
-    sha256 = "0ii10wmm8hqdp7bii7iza58rjaqs4z3ivv71qyix3qawwxx48hw9";
+    name   = "nixos-24.05-20240621";
+    url    = "https://github.com/NixOS/nixpkgs/archive/dd457de7e08c.tar.gz";
+    sha256 = "1kpamwmvs5xrmjgl3baxphmm69i0qydvgvk1n1c582ii4bdnzky0";
   };
 
   pkgs = import nixpkgs { };

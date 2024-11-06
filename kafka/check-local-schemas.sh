@@ -147,4 +147,3 @@ if [[ -n "${obsolete_schemas_files}" ]]; then
 fi
 
 [[ "${error_found}" == "false" ]] || exit 1
-

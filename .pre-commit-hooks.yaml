@@ -42,7 +42,7 @@
       - pyyaml==6.0.1
       - termcolor==2.4.0
       - semver==3.0.2
-      
+
 
 -   id: kafka-check-schemas
     name: Check if local Kafka Schemas are up to date with code
