@@ -43,6 +43,17 @@
       - termcolor==2.4.0
       - semver==3.0.2
 
+-   id: kong-values-validation
+    name: Kong values JSON schema validation
+    language: python
+    entry: python -m kp_pre_commit_hooks.kong-values-validation
+    stages: [pre-commit]
+    always_run: true
+    pass_filenames: false
+    additional_dependencies:
+      - jsonschema==4.19.0
+      - ruamel-yaml==0.17.32
+      - termcolor==2.4.0
 
 -   id: kafka-check-schemas
     name: Check if local Kafka Schemas are up to date with code
