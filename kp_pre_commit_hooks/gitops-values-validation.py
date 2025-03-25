@@ -305,7 +305,7 @@ class ServiceInstanceConfigValidator:
             "$.platform-managed-chart.image.repository": ["'waiting_statistics' does not match '^(dev|stable)/'"]
         },
         "route-finder-api": {
-            "$.platform-managed-chart.api.startupProbe.initialDelaySeconds": ["'2400' is greater than the maximum of '300'"]
+            "$.platform-managed-chart.api.startupProbe.initialDelaySeconds": ["2400 is greater than the maximum of 300"]
         },
     }
 
