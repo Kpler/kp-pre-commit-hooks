@@ -375,20 +375,19 @@ class ServiceInstanceConfigValidator:
         if match and match["serviceName"] != service_name:
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
 
-    def validate_topic_retention_bytes(self, value, schema):
-        if isinstance(value, dict) and "properties" in value:
-            properties = value.get("properties", {})
-            if isinstance(properties, dict):
-                if "retentionBytes" in properties:
-                    yield ValidationError(
-                        "retentionBytes property must not be set in topic properties",
-                        schema={"description": "Remove retentionBytes from your topic properties. This property is managed by the platform."}
-                    )
-                if "localRetentionBytes" in properties:
-                    yield ValidationError(
-                        "localRetentionBytes property must not be set in topic properties",
-                        schema={"description": "Remove localRetentionBytes from your topic properties. This property is managed by the platform."}
-                    )
+    def validate_topic_retention_bytes_compliance(self, value, schema):
+        properties = self.service_instance_config.configuration.get("kafka", {}).get("topic", {}).get("properties", {})
+        if isinstance(properties, dict):
+            if "retentionBytes" in properties:
+                yield ValidationError(
+                    "retentionBytes property must not be set in topic properties",
+                    schema={"description": "Remove retentionBytes from your topic properties. This property is managed by the platform."}
+                )
+            if "localRetentionBytes" in properties:
+                yield ValidationError(
+                    "localRetentionBytes property must not be set in topic properties",
+                    schema={"description": "Remove localRetentionBytes from your topic properties. This property is managed by the platform."}
+                )
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
