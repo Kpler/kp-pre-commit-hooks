@@ -391,6 +391,7 @@ class ServiceInstanceConfigValidator:
                     schema={"description": f"Remove `{env_variable}` from your environment variables.\n{forbidden_reason}"},
                 )
 
+
 def format_error(error: Union[ValidationError, SchemaValidationError]):
     if isinstance(error, SchemaValidationError):
         error_message = f"{red('ERROR:')} {error.message}\n   at: {bold(error.location)}"
