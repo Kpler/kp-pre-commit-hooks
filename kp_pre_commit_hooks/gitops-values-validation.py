@@ -216,6 +216,12 @@ class ServiceInstanceConfig:
 
 class ServiceInstanceConfigValidator:
 
+    MAX_LOCAL_TOPIC_BYTES = 1073741824
+    WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES = [
+        "ais-listener.nmea",
+        "ais-listener.error.station",
+    ]
+
     IGNORED_VALIDATION_ERRORS = {
         # These below project have service names are longer than the maximum allowed (36 characters)
         # or have application name not prefixed with the service name
@@ -310,12 +316,13 @@ class ServiceInstanceConfigValidator:
         "mt-tropical-storm-service": {
             "$.platform-managed-chart.api.ingress": ["Additional properties are not allowed ('enable_ssl_redirect' was unexpected)"]
         },
-        "ais-listener-nmea": {
-            "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": ["Max"]
-        },
-        "ais-listener-error-station": {
-            "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": [""]
-        }
+        # # How to get name of service?
+        # "ais-listener-nmea": {
+        #     "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": ["Max"]
+        # },
+        # "ais-listener-error-station": {
+        #     "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": [""]
+        # }
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
@@ -380,6 +387,12 @@ class ServiceInstanceConfigValidator:
         service_name = self.service_instance_config.service_name
         if match and match["serviceName"] != service_name:
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
+
+    def validate_max_local_topic_bytes_compliance(self, value, schema):
+        topic_name = value.get("topicName", {})
+        topic_max_local_bytes = value.get("maxLocalTopicBytes", {})
+        if topic_max_local_bytes > self.MAX_LOCAL_TOPIC_BYTES and str(topic_name) not in self.WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES:
+            yield ValidationError(f"maxLocalTopicBytes '{value}' is greater than the maximum of {self.MAX_LOCAL_TOPIC_BYTES}")
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
