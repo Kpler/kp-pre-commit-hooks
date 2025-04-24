@@ -12,5 +12,6 @@ in
   pkgs.mkShell {
     buildInputs = [
       pkgs.pre-commit
+      pkgs.poetry
     ];
   }
