@@ -74,3 +74,14 @@ I can do:
 ```bash
 pre-commit try-repo path_to_this_repo/kp-pre-commit-hooks/ check-branch-linearity --hook-stage push --verbose
 ```
+
+
+### Local Debugging of Schema Validation Logic
+
+Prereq:
+`poetry install`
+
+An example for testing against a repo:
+`poetry run python kp_pre_commit_hooks/gitops-values-validation.py  repos/mt-inbox-gitops`
+
+Send the entire gitops repository path in for it to parse through the gitops repository for validation.
