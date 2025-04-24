@@ -41,6 +41,11 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
 }
 
+WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT = {
+        "ais-listener.nmea": 5368709120,
+        "ais-listener.error.station": 5368709120,
+    }
+
 ###############################################################################
 # Generic Helper functions and classes
 ###############################################################################
@@ -216,12 +221,6 @@ class ServiceInstanceConfig:
 
 class ServiceInstanceConfigValidator:
 
-    MAX_LOCAL_TOPIC_BYTES = 1073741824
-    WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES = [
-        "ais-listener.nmea",
-        "ais-listener.error.station",
-    ]
-
     IGNORED_VALIDATION_ERRORS = {
         # These below project have service names are longer than the maximum allowed (36 characters)
         # or have application name not prefixed with the service name
@@ -367,8 +366,8 @@ class ServiceInstanceConfigValidator:
         return error.message in ignored_errors_for_service.get(error.json_path, [])
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
+        print(f"additional_checks: {additional_checks}")
         for check in additional_checks:
-            print(f"validate_{camel_to_snake(check)}")
             if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
                 yield from check_method(value, schema)
 
@@ -382,11 +381,16 @@ class ServiceInstanceConfigValidator:
         if match and match["serviceName"] != service_name:
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
 
+        #maxLocalTopicBytesCompliance
     def validate_max_local_topic_bytes_compliance(self, value, schema):
         topic_name = value.get("topicName", {})
         topic_max_local_bytes = value.get("maxLocalTopicBytes", {})
-        if topic_max_local_bytes > self.MAX_LOCAL_TOPIC_BYTES and str(topic_name) not in self.WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES:
-            yield ValidationError(f"maxLocalTopicBytes '{value}' is greater than the maximum of {self.MAX_LOCAL_TOPIC_BYTES}")
+        if str(topic_name) in WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT:
+            max_allowed = WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT[str(topic_name)]
+            if topic_max_local_bytes > max_allowed:
+                yield ValidationError(f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' exceeds the allowed maximum of {max_allowed}")
+        else:
+            yield ValidationError(f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes")
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
