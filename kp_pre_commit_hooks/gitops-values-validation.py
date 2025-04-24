@@ -41,9 +41,19 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
 }
 
-WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT = {
-        "ais-listener.nmea": 5368709120,
-        "ais-listener.error.station": 5368709120,
+WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES = {
+        "ais-listener.nmea": {
+          "max_limit": 5368709120,
+          "env": "prod"
+        },
+        "ais-listener.error.station": {
+          "max_limit": 5368709120,
+          "env": "prod"
+        },
+        "position.silver-v1": {
+          "max_limit": 5368709120,
+          "env": "dev"
+        }
     }
 
 ###############################################################################
@@ -383,14 +393,28 @@ class ServiceInstanceConfigValidator:
 
         #maxLocalTopicBytesCompliance
     def validate_max_local_topic_bytes_compliance(self, value, schema):
-        topic_name = value.get("topicName", {})
-        topic_max_local_bytes = value.get("maxLocalTopicBytes", {})
-        if str(topic_name) in WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT:
-            max_allowed = WHITELISTED_TOPIC_NAMES_FOR_MAX_LOCAL_TOPIC_BYTES_MAX_LIMIT[str(topic_name)]
-            if topic_max_local_bytes > max_allowed:
-                yield ValidationError(f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' exceeds the allowed maximum of {max_allowed}")
-        else:
-            yield ValidationError(f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes")
+
+        topics = value.get("managedResources", {}).get("mskTopics", {})
+        topic_env = value.get("env")
+        if not topics:
+            return
+        for topic_name, topic_config in topics.items():
+            topic_name = topic_config.get("topicName")
+            topic_max_local_bytes = topic_config.get("maxLocalTopicBytes")
+            print(f"topic_name: {topic_name}, topic_max_local_bytes: {topic_max_local_bytes}, env: {topic_env}")
+            if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES:
+                whitelist_topic_config = WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES[topic_name]
+                print(f"whitelist_topic_config: {whitelist_topic_config}")
+                if topic_env == whitelist_topic_config["env"]:
+                    if topic_max_local_bytes > whitelist_topic_config["max_limit"]:
+                        yield ValidationError(
+                            f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' "
+                            f"exceeds the allowed maximum of {whitelist_topic_config['max_limit']} for environment '{topic_env}'"
+                        )
+                else:
+                    yield ValidationError(
+                        f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes in environment '{topic_env}'"
+                    )
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
