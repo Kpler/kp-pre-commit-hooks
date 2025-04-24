@@ -16,22 +16,29 @@ from jsonschema_specifications import REGISTRY
 from referencing import Registry, Resource
 from termcolor import colored
 
+# Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ###############################################################################
-# Global Parameters
+# Constants and Configuration
 ###############################################################################
 
 SCHEMA_BASE_URL = "https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart"
 GITOPS_DIR = Path("gitops")
 
 SCHEMA_HEADER_REGEXP = re.compile(
-    rf"^ *# yaml-language-server: \$schema={SCHEMA_BASE_URL}/v(?P<version>[^/]+)/schema-platform-managed-chart.json", re.MULTILINE
+    rf"^ *# yaml-language-server: \$schema={SCHEMA_BASE_URL}/v(?P<version>[^/]+)/schema-platform-managed-chart.json",
+    re.MULTILINE
 )
-TOPIC_NAME_REGEXP = re.compile(r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9]*(-[0-9]+)?(\.[a-z0-9]+)?$")
+
+# Validate topic names follow pattern: (private.)?serviceName.topic(-version)?(.suffix)?
+TOPIC_NAME_REGEXP = re.compile(
+    r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9]*(-[0-9]+)?(\.[a-z0-9]+)?$"
+)
 
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
 
+# Environment variables that should not be overridden
 FORBIDDEN_ENVIRONMENT_VARIABLES = {
     "KAFKA_APPLICATION_ID": """KAFKA_APPLICATION_ID is automatically set in your container and should not be overridden.
 More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
@@ -41,43 +48,43 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-information-in-environment-variables""",
 }
 
+# Topics with special max local bytes limits
 WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES = {
-        "ais-listener.nmea": {
-          "max_limit": 5368709120,
-          "env": "prod"
-        },
-        "ais-listener.error.station": {
-          "max_limit": 5368709120,
-          "env": "prod"
-        },
-        "position.silver-v1": {
-          "max_limit": 5368709120,
-          "env": "dev"
-        }
+    "ais-listener.nmea": {
+        "max_limit": 5_368_709_120,  # 5GB
+        "env": "prod"
+    },
+    "ais-listener.error.station": {
+        "max_limit": 5_368_709_120,  # 5GB
+        "env": "prod"
+    },
+    "position.silver-v1": {
+        "max_limit": 5_368_709_120,  # 5GB
+        "env": "dev"
     }
+}
 
 ###############################################################################
 # Generic Helper functions and classes
 ###############################################################################
 
-# Helper functions to colorize the output
-red = lambda text: colored(text, "red")
-green = lambda text: colored(text, "green")
-bold = lambda text: colored(text, attrs=["bold"])
+def colorize(text: str, color: str = None, bold: bool = False) -> str:
+    """Apply color and formatting to text"""
+    attrs = ["bold"] if bold else None
+    return colored(text, color, attrs=attrs)
 
-
-def camel_to_snake(name):
+def camel_to_snake(name: str) -> str:
+    """Convert CamelCase to snake_case"""
     name = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
-
-def deep_merge(*sources) -> dict:
+def deep_merge(*sources: dict) -> dict:
+    """Recursively merge dictionaries"""
     result = {}
     for dictionary in sources:
         for key, value in dictionary.items():
-            current_value = result.get(key, None)
-            if isinstance(value, dict) and isinstance(current_value, dict):
-                result[key] = deep_merge(current_value, value)
+            if isinstance(value, dict) and isinstance(result.get(key), dict):
+                result[key] = deep_merge(result[key], value)
             else:
                 result[key] = value
     return result
@@ -106,7 +113,8 @@ class SchemaValidationError(Exception):
 
 
 @cache
-def download_json_schema(url):
+def download_json_schema(url: str) -> dict:
+    """Download and cache JSON schema from URL"""
     response = requests.get(url, timeout=10, verify=False)
     if response.status_code == 403:
         raise UnauthorizedToDownloadSchema(url)
@@ -115,10 +123,14 @@ def download_json_schema(url):
     response.raise_for_status()
     return response.json()
 
+# Registry for resolving schema references
+SCHEMA_REGISTRY = REGISTRY.combine(
+    Registry(retrieve=lambda uri: Resource.from_contents(download_json_schema(uri)))
+)
 
-# This is required so that jsonschema library can automatically download the schema references
-SCHEMA_REGISTRY = REGISTRY.combine(Registry(retrieve=lambda uri: Resource.from_contents(download_json_schema(uri))))
-
+###############################################################################
+# Core Classes
+###############################################################################
 
 @dataclass
 class HelmChart:
@@ -126,19 +138,21 @@ class HelmChart:
     version: str
     dependencies: list["HelmChart"] = field(default_factory=list)
 
-    def get_dependency(self, dependency_name) -> Optional["HelmChart"]:
+    def get_dependency(self, dependency_name: str) -> Optional["HelmChart"]:
+        """Get dependency chart by name"""
         return next((d for d in self.dependencies if d.name == dependency_name), None)
 
     @cached_property
     def json_schema(self) -> dict:
+        """Get JSON schema for chart version"""
         if self.platform_managed_chart_version and semver.compare(self.platform_managed_chart_version, "0.1.35") >= 0:
             schema_url = f"{SCHEMA_BASE_URL}/v{self.platform_managed_chart_version}/schema-platform-managed-chart-strict.json"
             return download_json_schema(schema_url)
-        else:
-            return {}
+        return {}
 
     @cached_property
     def platform_managed_chart_version(self) -> Optional[str]:
+        """Get platform managed chart version"""
         platform_managed_chart = self.get_dependency("platform-managed-chart")
         return platform_managed_chart.version if platform_managed_chart else None
 
@@ -168,19 +182,22 @@ class GitOpsRepository:
 class ValuesFile:
     path: Path
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.path.name)
 
     @cached_property
-    def values(self):
+    def values(self) -> dict:
+        """Load YAML values"""
         return yaml.safe_load(self.path.read_text()) or {}
 
     @cached_property
     def header_schema_version(self) -> Optional[str]:
+        """Get schema version from file header"""
         match = SCHEMA_HEADER_REGEXP.search(self.path.read_text())
         return match.group("version") if match else None
 
-    def set_header_schema_version(self, version):
+    def set_header_schema_version(self, version: str) -> None:
+        """Update schema version in file header"""
         if self.header_schema_version == version:
             return
         header = f"# yaml-language-server: $schema={SCHEMA_BASE_URL}/v{version}/schema-platform-managed-chart.json"
@@ -192,8 +209,8 @@ class ValuesFile:
 
     @staticmethod
     def merge_values(values_files: list["ValuesFile"]) -> dict:
+        """Merge multiple values files"""
         return deep_merge(*[v.values for v in values_files])
-
 
 @dataclass
 class ServiceInstanceConfig:
@@ -204,30 +221,44 @@ class ServiceInstanceConfig:
     path: Path
     gitops_repository: GitOpsRepository
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.application_name}/{self.service_name} {self.instance} instance {self.env} configuration"
 
     @property
     def rel_path(self) -> Path:
+        """Get path relative to gitops root"""
         return self.path.relative_to(self.gitops_repository.gitops_path)
 
     @property
     def configuration(self) -> dict:
+        """Get merged configuration"""
         return ValuesFile.merge_values(self.values_files)
 
     @property
     def values_files(self) -> list[ValuesFile]:
-        candidate_files = ["values.yaml", f"values-{self.env}.yaml", f"values-{self.env}-{self.instance}.yaml"]
-        return [ValuesFile(self.path.joinpath(file)) for file in candidate_files if self.path.joinpath(file).exists()]
+        """Get list of values files"""
+        candidate_files = [
+            "values.yaml",
+            f"values-{self.env}.yaml",
+            f"values-{self.env}-{self.instance}.yaml"
+        ]
+        return [
+            ValuesFile(self.path.joinpath(file))
+            for file in candidate_files
+            if self.path.joinpath(file).exists()
+        ]
 
     @property
     def helm_chart(self) -> HelmChart:
+        """Get HelmChart from Chart.yaml"""
         return HelmChart.from_chart_file(self.path / "Chart.yaml")
 
-    def sync_values_files_schema_header_version(self):
+    def sync_values_files_schema_header_version(self) -> None:
+        """Sync schema version in all values files"""
         for value_file in self.values_files:
-            value_file.set_header_schema_version(self.helm_chart.platform_managed_chart_version)
-
+            value_file.set_header_schema_version(
+                self.helm_chart.platform_managed_chart_version
+            )
 
 class ServiceInstanceConfigValidator:
 
@@ -332,12 +363,20 @@ class ServiceInstanceConfigValidator:
 
     @cached_property
     def validator(self) -> Validator:
+        """Create JSON schema validator"""
         validator_class = validators.validates("draft7")(
-            validators.extend(Draft7Validator, validators={"additionalChecks": self.validate_additional_checks})
+            validators.extend(
+                Draft7Validator,
+                validators={"additionalChecks": self.validate_additional_checks}
+            )
         )
-        return validator_class(self.service_instance_config.helm_chart.json_schema, registry=SCHEMA_REGISTRY)
+        return validator_class(
+            self.service_instance_config.helm_chart.json_schema,
+            registry=SCHEMA_REGISTRY
+        )
 
     def validate_configuration(self) -> Sequence[Union[ValidationError, SchemaValidationError]]:
+        """Validate service configuration"""
         try:
             raw_validation_errors = [
                 self.enrich_error_message(error)
@@ -348,20 +387,21 @@ class ServiceInstanceConfigValidator:
             return validation_errors + schema_validation_errors
 
         except MissingSchema as error:
-            platform_managed_chart_version = self.service_instance_config.helm_chart.platform_managed_chart_version
+            version = self.service_instance_config.helm_chart.platform_managed_chart_version
             return [
                 SchemaValidationError(
-                    f"Missing JSON schema for platform managed chart version {platform_managed_chart_version} in Chart.yaml",
+                    f"Missing JSON schema for platform managed chart version {version} in Chart.yaml",
                     location=error.schema_url,
                 )
             ]
 
     def iter_schema_validation_errors(self) -> Iterator[SchemaValidationError]:
-        platform_managed_chart_version = self.service_instance_config.helm_chart.platform_managed_chart_version
+        """Check schema version consistency"""
+        version = self.service_instance_config.helm_chart.platform_managed_chart_version
         for values_file in self.service_instance_config.values_files:
-            if values_file.header_schema_version != platform_managed_chart_version:
+            if values_file.header_schema_version != version:
                 yield SchemaValidationError(
-                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({platform_managed_chart_version})",
+                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({version})",
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
@@ -391,29 +431,34 @@ class ServiceInstanceConfigValidator:
         if match and match["serviceName"] != service_name:
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
 
-        #maxLocalTopicBytesCompliance
     def validate_max_local_topic_bytes_compliance(self, value, schema):
 
         topics = value.get("managedResources", {}).get("mskTopics", {})
         topic_env = value.get("env")
+
         if not topics:
             return
-        for topic_name, topic_config in topics.items():
+
+        for topic_key, topic_config in topics.items():
             topic_name = topic_config.get("topicName")
             topic_max_local_bytes = topic_config.get("maxLocalTopicBytes")
-            print(f"topic_name: {topic_name}, topic_max_local_bytes: {topic_max_local_bytes}, env: {topic_env}")
+
             if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES:
-                whitelist_topic_config = WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES[topic_name]
-                print(f"whitelist_topic_config: {whitelist_topic_config}")
-                if topic_env == whitelist_topic_config["env"]:
-                    if topic_max_local_bytes > whitelist_topic_config["max_limit"]:
+                whitelist_config = WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES[topic_name]
+
+                if topic_env == whitelist_config["env"]:
+                    if topic_max_local_bytes > whitelist_config["max_limit"]:
                         yield ValidationError(
                             f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' "
-                            f"exceeds the allowed maximum of {whitelist_topic_config['max_limit']} for environment '{topic_env}'"
+                            f"exceeds the allowed maximum of {whitelist_config['max_limit']} "
+                            f"for environment '{topic_env}'\n"
+                            f"Please contact the platform team to increase the limit."
                         )
                 else:
                     yield ValidationError(
-                        f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes in environment '{topic_env}'"
+                        f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes "
+                        f"in environment '{topic_env}'"
+                        f"Please contact the platform team to whitelist the topic."
                     )
 
     def validate_forbidden_environment_variables(self, value, schema):
@@ -426,35 +471,39 @@ class ServiceInstanceConfigValidator:
                     schema={"description": f"Remove `{env_variable}` from your environment variables.\n{forbidden_reason}"},
                 )
 
-
-def format_error(error: Union[ValidationError, SchemaValidationError]):
+def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
+    """Format validation error message"""
     if isinstance(error, SchemaValidationError):
-        error_message = f"{red('ERROR:')} {error.message}\n   at: {bold(error.location)}"
+        error_message = f"{colorize('ERROR:', 'red')} {error.message}\n   at: {colorize(error.location, bold=True)}"
         if error.hint:
-            error_message += f"\n\n {bold('Hint:')} {error.hint}\n"
-
+            error_message += f"\n\n {colorize('Hint:', bold=True)} {error.hint}\n"
     else:
         location = "/".join(map(str, error.absolute_path))
-        error_message = f"{red('ERROR:')} {error.message}\n   at: {bold(location)}"
+        error_message = f"{colorize('ERROR:', 'red')} {error.message}\n   at: {colorize(location, bold=True)}"
+
         if description := error.schema and error.schema.get("description"):
             title, description = description.split("\n", maxsplit=1)
-            error_message += f"\n\n {bold('Hint:')} {title}\n\n"
+            error_message += f"\n\n {colorize('Hint:', bold=True)} {title}\n\n"
             error_message += textwrap.indent(description, prefix=" " * 7)
 
     return error_message
 
-
 def display_errors(
-    service_instance_config: ServiceInstanceConfig, errors: Sequence[Union[ValidationError, SchemaValidationError]]
-):
-    values_files = ", ".join([str(v) for v in service_instance_config.values_files])
-    print(f"\nThe following error(s) were found in the files {values_files}\nunder {service_instance_config.rel_path}:\n")
+    service_instance_config: ServiceInstanceConfig,
+    errors: Sequence[Union[ValidationError, SchemaValidationError]]
+) -> None:
+    """Display validation errors"""
+    values_files = ", ".join(str(v) for v in service_instance_config.values_files)
+    print(
+        f"\nThe following error(s) were found in the files {values_files}\n"
+        f"under {service_instance_config.rel_path}:\n"
+    )
     for error in errors:
         print(textwrap.indent(format_error(error), prefix=" " * 2) + "\n")
 
 
 ###############################################################################
-# Main code
+# Main Entry Point
 ###############################################################################
 
 if __name__ == "__main__":
@@ -468,11 +517,12 @@ if __name__ == "__main__":
 
             validator = ServiceInstanceConfigValidator(service_instance_config)
             errors = validator.validate_configuration()
+
             if not errors:
-                print(green("PASSED"))
+                print(colorize("PASSED", "green"))
             else:
                 errors_found = True
-                print(red("FAILED"))
+                print(colorize("FAILED", "red"))
                 display_errors(service_instance_config, errors)
                 # We always try to sync the schema header version, in case it was one of the error detected
                 service_instance_config.sync_values_files_schema_header_version()
@@ -481,7 +531,7 @@ if __name__ == "__main__":
 
     except UnauthorizedToDownloadSchema as error:
         print(
-            f"\n\n{red('FATAL:')} Unauthorized to download schema at {error.schema_url}\n"
+            f"\n\n{colorize('FATAL:', 'red')} Unauthorized to download schema at {error.schema_url}\n"
             "       Please check that your Twingate VPN Client is up and running configured.\n"
             f"       More info at {TWINGATE_DOC_URL}\n\n"
         )
