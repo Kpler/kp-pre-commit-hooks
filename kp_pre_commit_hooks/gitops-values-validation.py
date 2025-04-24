@@ -315,14 +315,7 @@ class ServiceInstanceConfigValidator:
         },
         "mt-tropical-storm-service": {
             "$.platform-managed-chart.api.ingress": ["Additional properties are not allowed ('enable_ssl_redirect' was unexpected)"]
-        },
-        # # How to get name of service?
-        # "ais-listener-nmea": {
-        #     "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": ["Max"]
-        # },
-        # "ais-listener-error-station": {
-        #     "$.platform-managed-chart.managedResources.mskTopics.properties.maxLocalTopicBytes": [""]
-        # }
+        }
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
