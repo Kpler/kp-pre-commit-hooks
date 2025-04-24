@@ -368,6 +368,7 @@ class ServiceInstanceConfigValidator:
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
         for check in additional_checks:
+            print(f"validate_{camel_to_snake(check)}")
             if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
                 yield from check_method(value, schema)
 
