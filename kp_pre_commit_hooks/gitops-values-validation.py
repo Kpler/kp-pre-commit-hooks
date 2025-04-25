@@ -49,18 +49,21 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 }
 
 # Topics with special max local bytes limits
-WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES = {
+WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
     "ais-listener.nmea": {
-        "max_limit": 5_368_709_120,  # 5GB
-        "env": "prod"
+        "prod": {
+            "max_limit": 5_368_709_120,  # 5GB
+        }
     },
     "ais-listener.error.station": {
-        "max_limit": 5_368_709_120,  # 5GB
-        "env": "prod"
+        "prod": {
+            "max_limit": 5_368_709_120,  # 5GB
+        }
     },
     "position.silver-v1": {
-        "max_limit": 5_368_709_120,  # 5GB
-        "env": "dev"
+        "dev": {
+            "max_limit": 5_368_709_120,  # 5GB
+        }
     }
 }
 
@@ -443,14 +446,12 @@ class ServiceInstanceConfigValidator:
             topic_name = topic_config.get("topicName")
             topic_max_local_bytes = topic_config.get("maxLocalTopicBytes")
 
-            if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES:
-                whitelist_config = WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES[topic_name]
-
-                if topic_env == whitelist_config["env"]:
-                    if topic_max_local_bytes > whitelist_config["max_limit"]:
+            if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV:
+                if topic_env in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name]:
+                    if topic_max_local_bytes > WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]["max_limit"]:
                         yield ValidationError(
                             f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' "
-                            f"exceeds the allowed maximum of {whitelist_config['max_limit']} "
+                            f"exceeds the allowed maximum of {WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]['max_limit']} "
                             f"for environment '{topic_env}'\n"
                             f"Please contact the platform team to increase the limit."
                         )
