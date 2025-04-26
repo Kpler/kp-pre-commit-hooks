@@ -4,7 +4,7 @@ import textwrap
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
-from typing import Iterator, Optional, Sequence, Union, cast
+from typing import Iterator, Literal, Mapping, Optional, Sequence, Union, cast
 
 import requests
 import semver
@@ -71,9 +71,12 @@ ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
 # Generic Helper functions and classes
 ###############################################################################
 
-def colorize(text: str, color: str = None, bold: bool = False) -> str:
+Color = Literal["black", "grey", "red", "green", "yellow", "blue", "magenta", "cyan"]
+Attribute = Literal["bold", "dark", "underline", "blink", "reverse", "concealed"]
+
+def colorize(text: str, color: Color | None = None, bold: bool = False) -> str:
     """Apply color and formatting to text"""
-    attrs = ["bold"] if bold else None
+    attrs: list[Attribute] = ["bold"] if bold else []
     return colored(text, color, attrs=attrs)
 
 def camel_to_snake(name: str) -> str:
@@ -258,10 +261,10 @@ class ServiceInstanceConfig:
 
     def sync_values_files_schema_header_version(self) -> None:
         """Sync schema version in all values files"""
+        if self.helm_chart.platform_managed_chart_version is None:
+            return
         for value_file in self.values_files:
-            value_file.set_header_schema_version(
-                self.helm_chart.platform_managed_chart_version
-            )
+            value_file.set_header_schema_version(self.helm_chart.platform_managed_chart_version)
 
 class ServiceInstanceConfigValidator:
 
@@ -410,7 +413,7 @@ class ServiceInstanceConfigValidator:
                 )
 
     def enrich_error_message(self, error: ValidationError) -> ValidationError:
-        if error.message.endswith("is too long") and error.schema.get("maxLength"):
+        if error.message.endswith("is too long") and isinstance(error.schema, Mapping) and error.schema.get("maxLength"):
             error.message += f', the maximum length is {error.schema["maxLength"]}'
         return error
 
@@ -478,8 +481,8 @@ def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
         location = "/".join(map(str, error.absolute_path))
         error_message = f"{colorize('ERROR:', 'red')} {error.message}\n   at: {colorize(location, bold=True)}"
 
-        if description := error.schema and error.schema.get("description"):
-            title, description = description.split("\n", maxsplit=1)
+        if isinstance(error.schema, Mapping) and "description" in error.schema:
+            title, description = error.schema["description"].split("\n", maxsplit=1)
             error_message += f"\n\n {colorize('Hint:', bold=True)} {title}\n\n"
             error_message += textwrap.indent(description, prefix=" " * 7)
 
