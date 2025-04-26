@@ -422,7 +422,6 @@ class ServiceInstanceConfigValidator:
         return error.message in ignored_errors_for_service.get(error.json_path, [])
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
-        print(f"additional_checks: {additional_checks}")
         for check in additional_checks:
             if check_method := getattr(self, f"validate_{camel_to_snake(check)}", None):
                 yield from check_method(value, schema)
