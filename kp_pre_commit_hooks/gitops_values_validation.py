@@ -442,7 +442,7 @@ class ServiceInstanceConfigValidator:
         if not topics:
             return
 
-        for topic_key, topic_config in topics.items():
+        for topic_config in topics.values():
             topic_name = topic_config.get("topicName")
             topic_max_local_bytes = topic_config.get("maxLocalTopicBytes")
 
