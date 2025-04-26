@@ -1,6 +1,7 @@
 import re
 import sys
 import textwrap
+from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
@@ -49,7 +50,7 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 }
 
 # Topics with special max local bytes limits
-WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
+ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
     "ais-listener.nmea": {
         "prod": {
             "max_limit": 5_368_709_120,  # 5GB
@@ -449,21 +450,20 @@ class ServiceInstanceConfigValidator:
             if topic_max_local_bytes is None:
                 continue
 
-            if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV:
-                if topic_env in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name]:
-                    if topic_max_local_bytes > WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]["max_limit"]:
-                        yield ValidationError(
-                            f"maxLocalTopicBytes exceeds the allowed maximum of {WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]['max_limit']} "
-                            f"for topic '{topic_name}' in environment '{topic_env}'.\n"
-                            " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
-                        )
-                    continue
+            max_allowed_values = ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV.get(topic_name, {}).get(topic_env, {}).get("max_limit")
+            if not max_allowed_values:
+                yield ValidationError(
+                    "maxLocalTopicBytes can only be used with allowed topics"
+                    f" and topic '{topic_name}' is not allowed in environment '{topic_env}'."
+                    " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
+                )
+            elif topic_max_local_bytes > max_allowed_values:
+                yield ValidationError(
+                    f"maxLocalTopicBytes exceeds the allowed maximum of {max_allowed_values} "
+                    f"for topic '{topic_name}' in environment '{topic_env}'.\n"
+                    " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
+                )
 
-            yield ValidationError(
-                "maxLocalTopicBytes can only be used with allowed topics"
-                f" and topic '{topic_name}' is not allowed in environment '{topic_env}'."
-                " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
-            )
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
