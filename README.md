@@ -82,6 +82,6 @@ Prereq:
 `poetry install`
 
 An example for testing against a repo:
-`poetry run python kp_pre_commit_hooks/gitops-values-validation.py ~/repos/mt-inbox-gitops`
+`poetry run python kp_pre_commit_hooks/gitops_values_validation.py ~/repos/mt-inbox-gitops`
 
 Send the entire gitops repository path in for it to parse through the gitops repository for validation.
