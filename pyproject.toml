@@ -10,7 +10,7 @@ python = "^3.9"
 jsonschema = "^4.19.0"
 requests = "^2.31.0"
 ruamel-yaml = "^0.17.32"
-urllib3 = "^1.26.15"
+urllib3 = { version = "^1.26.15", extras = ["secure"] }
 pyyaml = "^6.0.1"
 termcolor = "^2.4.0"
 semver = "^3.0.2"

@@ -118,7 +118,7 @@ class SchemaValidationError(Exception):
 @cache
 def download_json_schema(url: str) -> dict:
     """Download and cache JSON schema from URL"""
-    response = requests.get(url, timeout=10, verify=False)
+    response = requests.get(url, timeout=10, verify=True)
     if response.status_code == 403:
         raise UnauthorizedToDownloadSchema(url)
     if response.status_code == 404:
@@ -148,7 +148,7 @@ class HelmChart:
     @cached_property
     def json_schema(self) -> dict:
         """Get JSON schema for chart version"""
-        if self.platform_managed_chart_version and semver.compare(self.platform_managed_chart_version, "0.1.35") >= 0:
+        if self.platform_managed_chart_version and semver.VersionInfo.parse(self.platform_managed_chart_version).compare("0.1.35") >= 0:
             schema_url = f"{SCHEMA_BASE_URL}/v{self.platform_managed_chart_version}/schema-platform-managed-chart-strict.json"
             return download_json_schema(schema_url)
         return {}
