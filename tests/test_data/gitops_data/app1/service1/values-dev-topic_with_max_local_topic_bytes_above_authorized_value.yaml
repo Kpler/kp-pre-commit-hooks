@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart/v0.1.157-pr195/schema-platform-managed-chart.json
+# Test file: Whitelisted topic exceeding its specific limit
+platform-managed-chart:
+  serviceName: service1
+  teamOwner: team1
+  env: dev
+  workloadType: stream
+
+  stream: {}
+
+  image:
+    repository: dev/my-repo
+    tag: my-tag
+
+  managedResources:
+    mskTopics:
+      position:
+        topicName: position.silver-v1
+        maxLocalTopicBytes: 5368709121

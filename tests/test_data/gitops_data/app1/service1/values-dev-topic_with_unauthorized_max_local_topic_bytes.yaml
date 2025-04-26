@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart/v0.1.157-pr195/schema-platform-managed-chart.json
+platform-managed-chart:
+  serviceName: service1
+  teamOwner: team1
+  env: dev
+  workloadType: stream
+
+  stream: {}
+
+  image:
+    repository: dev/my-repo
+    tag: my-tag
+
+  managedResources:
+    mskTopics:
+      output:
+        topicName: service1.testtopic
+        maxLocalTopicBytes: 2147483648

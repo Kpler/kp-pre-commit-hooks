@@ -37,3 +37,4 @@ local.properties
 .loadpath
 .direnv/
 .envrc
+__pycache__
