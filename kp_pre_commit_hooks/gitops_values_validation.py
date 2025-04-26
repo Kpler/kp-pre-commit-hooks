@@ -446,21 +446,24 @@ class ServiceInstanceConfigValidator:
             topic_name = topic_config.get("topicName")
             topic_max_local_bytes = topic_config.get("maxLocalTopicBytes")
 
+            if topic_max_local_bytes is None:
+                continue
+
             if topic_name in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV:
                 if topic_env in WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name]:
                     if topic_max_local_bytes > WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]["max_limit"]:
                         yield ValidationError(
-                            f"maxLocalTopicBytes '{topic_max_local_bytes}' for topic '{topic_name}' "
-                            f"exceeds the allowed maximum of {WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]['max_limit']} "
-                            f"for environment '{topic_env}'\n"
-                            f"Please contact the platform team to increase the limit."
+                            f"maxLocalTopicBytes exceeds the allowed maximum of {WHITELISTED_TOPICS_FOR_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV[topic_name][topic_env]['max_limit']} "
+                            f"for topic '{topic_name}' in environment '{topic_env}'.\n"
+                            " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
                         )
-                else:
-                    yield ValidationError(
-                        f"topic '{topic_name}' is not whitelisted for setting maxLocalTopicBytes "
-                        f"in environment '{topic_env}'"
-                        f"Please contact the platform team to whitelist the topic."
-                    )
+                    continue
+
+            yield ValidationError(
+                "maxLocalTopicBytes can only be used with allowed topics"
+                f" and topic '{topic_name}' is not allowed in environment '{topic_env}'."
+                " See https://kpler.atlassian.net/wiki/x/BgGKS for more information."
+            )
 
     def validate_forbidden_environment_variables(self, value, schema):
         if not isinstance(value, dict):
