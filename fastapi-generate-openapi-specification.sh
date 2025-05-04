@@ -18,8 +18,11 @@ def main() -> None:
 
     new_spec = app.openapi()
 
-    with open(args.spec_file_path) as f:
-        old_spec = json.load(f)
+    try: 
+        with open(args.spec_file_path) as f:
+            old_spec = json.load(f)
+    except Exception:
+        old_spec = None
 
     should_update_spec = old_spec != new_spec
 
