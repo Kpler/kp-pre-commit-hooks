@@ -52,7 +52,7 @@ More info at https://kpler.atlassian.net/l/cp/jb4uJQs3#Use-connection-informatio
 ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
     "ais-listener.nmea": {
         "prod": {
-            "max_limit": 644_245_094_400,  # 600GB
+            "max_limit": 697_932_185_600,  # 650GB
         }
     },
     "ais-listener.error.station": {
