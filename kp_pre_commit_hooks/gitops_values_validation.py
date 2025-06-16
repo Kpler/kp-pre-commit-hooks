@@ -33,7 +33,7 @@ SCHEMA_HEADER_REGEXP = re.compile(
 
 # Validate topic names follow pattern: (private.)?serviceName.topic(-version)?(.suffix)?
 TOPIC_NAME_REGEXP = re.compile(
-    r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9]*(-[0-9]+)?(\.[a-z0-9]+)?$"
+    r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*(-[0-9]+)?(\.[a-z0-9]+)?$"
 )
 
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
