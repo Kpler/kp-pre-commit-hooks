@@ -15,7 +15,6 @@ from jsonschema.protocols import Validator
 from jsonschema_specifications import REGISTRY
 from referencing import Registry, Resource
 from termcolor import colored
-from yaml.scanner import ScannerError
 
 # Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -420,15 +419,7 @@ class ServiceInstanceConfigValidator:
             if not chart_file_path.exists():
                 continue
 
-            try:
-                helm_chart = HelmChart.from_chart_file(chart_file_path)
-            except ScannerError as e:
-                yield SchemaValidationError(
-                    f"Invalid YAML: {e.problem}",
-                    location=f"file {chart_file_path.relative_to(self.service_instance_config.gitops_repository.gitops_path)} at line {e.problem_mark.line + 1}",
-                    hint="YAML does not allow tab characters. Please use spaces for indentation."
-                )
-                continue # Skip further checks on this broken file
+            helm_chart = HelmChart.from_chart_file(chart_file_path)
 
             chart_version_str = helm_chart.platform_managed_chart_version
             if chart_version_str:
