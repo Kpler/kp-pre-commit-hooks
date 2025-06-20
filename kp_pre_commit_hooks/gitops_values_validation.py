@@ -164,8 +164,8 @@ class HelmChart:
     def from_chart_file(chart_file: Path):
         chart = cast(dict, yaml.safe_load(chart_file.read_text()))
         return HelmChart(
-            name=chart["name"],
-            version=chart["version"],
+            name=chart.get("name", ""),
+            version=chart.get("version", ""),
             dependencies=[HelmChart(dep["name"], dep["version"]) for dep in chart.get("dependencies", [])],
         )
 
