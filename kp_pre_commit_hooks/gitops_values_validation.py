@@ -1,6 +1,7 @@
 import re
 import sys
 import textwrap
+from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
@@ -177,6 +178,26 @@ class GitOpsRepository:
             service_name = instance_values_file.parent.name
             _, env, instance = instance_values_file.stem.split("-", maxsplit=2)
             yield ServiceInstanceConfig(application_name, service_name, env, instance, instance_values_file.parent, self)
+
+    def validate_unique_service_names(self) -> list[SchemaValidationError]:
+        """Validate that service names are unique across all applications"""
+        service_to_apps = defaultdict(set)
+
+        # Collect unique applications for each service name
+        for config in self.iter_service_instances_config():
+            service_to_apps[config.service_name].add(config.application_name)
+
+        # Generate errors for services appearing in multiple applications
+        return [
+            SchemaValidationError(
+                f"Service name '{service_name}' is used in multiple applications: {', '.join(sorted(apps))}. "
+                "Service names must be unique across all applications.",
+                location=f"Applications: {', '.join(sorted(apps))}",
+                hint="Rename one of the services to have a unique name across all applications in the repository."
+            )
+            for service_name, apps in service_to_apps.items()
+            if len(apps) > 1
+        ]
 
 
 @dataclass
@@ -506,6 +527,19 @@ if __name__ == "__main__":
 
     try:
         errors_found = False
+
+        print("Checking repository-level constraints...")
+        repo_errors = gitops_repository.validate_unique_service_names()
+
+        if repo_errors:
+            errors_found = True
+            print(f"\n{colorize('REPOSITORY VALIDATION FAILED:', 'red')}")
+            for error in repo_errors:
+                print(textwrap.indent(format_error(error), prefix=" " * 2) + "\n")
+        else:
+            print(colorize("Repository constraints PASSED", "green"))
+
+        # Individual service instance validations
         for service_instance_config in gitops_repository.iter_service_instances_config():
             print(f"Checking {service_instance_config} ", end="")
 
