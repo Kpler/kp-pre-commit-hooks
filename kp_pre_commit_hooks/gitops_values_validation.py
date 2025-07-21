@@ -356,6 +356,11 @@ class ServiceInstanceConfigValidator:
         },
         "mt-tropical-storm-service": {
             "$.platform-managed-chart.api.ingress": ["Additional properties are not allowed ('enable_ssl_redirect' was unexpected)"]
+        },
+        "mcp-test": {
+            "$.platform-managed-chart.api.deployment": [
+                "Additional properties are not allowed ('nodeSelector', 'tolerations' were unexpected)"
+            ]
         }
     }
 
