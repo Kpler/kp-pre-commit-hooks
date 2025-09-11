@@ -364,7 +364,7 @@ class ServiceInstanceConfigValidator:
         },
         "platform-webhooks": {
             "$.platform-managed-chart.api.deployment": [
-                "Additional properties are not allowed ('nodeSelector', 'tolerations' were unexpected)"
+                "Additional properties are not allowed ('tolerations' was unexpected)"
             ]
         }
     }
