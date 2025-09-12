@@ -62,6 +62,24 @@ repos:
       - id: kafka-check-schemas
 ```
 
+#### `terraform-repo-compliance`
+
+Check that the Terraform repository follows Kpler's compliance rules:
+- Region consistency: If any config file contains a region (e.g., `dev-main.ireland.tfvars`), then ALL main config files must specify a region. Files without region (e.g., `dev-main.tfvars`) are only allowed if NO files have regions.
+
+This hook runs on pre-commit and checks `.tfvars` files.
+
+Add these lines in your `.pre-commit-config.yaml` file to enable this pre-commit hook:
+```yaml
+repos:
+  # [...]
+  - repo: https://github.com/Kpler/kp-pre-commit-hooks.git
+    rev: v0.22.0  # Use the latest version
+    hooks:
+      # [...]
+      - id: terraform-repo-compliance
+```
+
 [example of implementation]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/src/ci/scala/schema_generator/VulcanSchemaGenerator.scala
 [sbt command]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/build.sbt#L75
 
