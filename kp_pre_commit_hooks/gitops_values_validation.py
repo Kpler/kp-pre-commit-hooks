@@ -432,8 +432,13 @@ class ServiceInstanceConfigValidator:
                 yield from check_method(value, schema)
 
     def validate_service_name_matches_service_folder(self, value, schema):
-        if self.service_instance_config.path.name != value:
-            yield ValidationError(f"'{value}' does not match the service folder name '{self.service_instance_config.path.name}'")
+        platform_managed_chart_version = self.service_instance_config.helm_chart.platform_managed_chart_version
+        folder_name = self.service_instance_config.path.name
+        if folder_name != value and not value.startswith(f"{folder_name}-"):
+            yield ValidationError(
+                f"'{value}' does not match the service folder name '{folder_name}'"
+                f"Must be either '{folder_name}' or '{folder_name}-<suffix>'"
+                )
 
     def validate_topic_name_compliance(self, value, schema):
         match = TOPIC_NAME_REGEXP.match(str(value))
