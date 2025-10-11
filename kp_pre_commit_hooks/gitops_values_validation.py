@@ -436,7 +436,7 @@ class ServiceInstanceConfigValidator:
         if folder_name != value and not value.startswith(f"{folder_name}-"):
             yield ValidationError(
                 f"'{value}' does not match the service folder name '{folder_name}'"
-                f"Must be either '{folder_name}' or '{folder_name}-<suffix>'"
+                f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
                 )
 
     def validate_service_keys_match_service_folder(self, value, schema):
@@ -448,7 +448,7 @@ class ServiceInstanceConfigValidator:
             if folder_name != service_key and not service_key.startswith(f"{folder_name}-"):
                 yield ValidationError(
                     f"'{service_key}' does not match the service folder name '{folder_name}'"
-                    f"Must be either '{folder_name}' or '{folder_name}-<suffix>'"
+                    f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
                 )
 
     def validate_topic_name_compliance(self, value, schema):
