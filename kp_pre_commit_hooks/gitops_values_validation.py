@@ -502,9 +502,10 @@ def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
         error_message = f"{colorize('ERROR:', 'red')} {error.message}\n   at: {colorize(location, bold=True)}"
 
         if isinstance(error.schema, Mapping) and "description" in error.schema:
-            title, description = error.schema["description"].split("\n", maxsplit=1)
+            title, _, description = error.schema["description"].partition("\n")
             error_message += f"\n\n {colorize('Hint:', bold=True)} {title}\n\n"
-            error_message += textwrap.indent(description, prefix=" " * 7)
+            if description:
+                error_message += textwrap.indent(description, prefix=" " * 7)
 
     return error_message
 
