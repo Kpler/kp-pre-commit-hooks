@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
 from typing import Iterator, Literal, Mapping, Optional, Sequence, Union, cast
+import warnings
 
 import requests
 import semver
@@ -18,6 +19,14 @@ from termcolor import colored
 
 # Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# We subclass the validator to be able to intercept descend() call and track the current path
+# jsonschema doesn't like that, but until they implement it, we need to suppress the warning
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message=r".*Subclassing validator classes is not intended.*"
+)
 
 ###############################################################################
 # Constants and Configuration
@@ -222,6 +231,10 @@ class ServiceInstanceConfig:
     path: Path
     gitops_repository: GitOpsRepository
 
+    @property
+    def service_group(self) -> str:
+        return self.service_name
+
     def __str__(self) -> str:
         return f"{self.application_name}/{self.service_name} {self.instance} instance {self.env} configuration"
 
@@ -260,6 +273,7 @@ class ServiceInstanceConfig:
             return
         for value_file in self.values_files:
             value_file.set_header_schema_version(self.helm_chart.platform_managed_chart_version)
+
 
 class ServiceInstanceConfigValidator:
 
@@ -371,16 +385,29 @@ class ServiceInstanceConfigValidator:
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
         self.service_instance_config = service_instance_config
+        self._current_path = []
 
     @cached_property
     def validator(self) -> Validator:
         """Create JSON schema validator"""
-        validator_class = validators.validates("draft7")(
-            validators.extend(
-                Draft7Validator,
-                validators={"additionalChecks": self.validate_additional_checks}
-            )
+
+        base_validator_class = validators.extend(
+            Draft7Validator,
+            validators={"additionalChecks": self.validate_additional_checks}
         )
+
+        # We wrap the validator to intercept descend() and track the current path
+        # as this information is not provided by json schema otherwise
+        outer_self = self
+        class PathTrackingValidator(base_validator_class):
+            def descend(self, instance, schema, path=None, schema_path=None, resolver=None):
+                outer_self._current_path.append(path)
+                try:
+                    yield from super().descend(instance, schema, path, schema_path, resolver)
+                finally:
+                    outer_self._current_path.pop()
+
+        validator_class = validators.validates("draft7")(PathTrackingValidator)
         return validator_class(
             self.service_instance_config.helm_chart.json_schema,
             registry=SCHEMA_REGISTRY
@@ -437,7 +464,7 @@ class ServiceInstanceConfigValidator:
             yield ValidationError(
                 f"'{value}' does not match the service folder name '{folder_name}'"
                 f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
-                )
+            )
 
     def validate_service_keys_match_service_folder(self, value, schema):
         if not isinstance(value, dict):
@@ -490,6 +517,20 @@ class ServiceInstanceConfigValidator:
                     f"Environment variable `{env_variable}` is not allowed to be manually set",
                     schema={"description": f"Remove `{env_variable}` from your environment variables.\n{forbidden_reason}"},
                 )
+
+    def _get_current_path(self) -> list[str]:
+        return [part for part in self._current_path if part is not None]
+
+    def _get_current_service_name(self) -> str:
+        current_path = self._get_current_path()
+        if len(current_path) > 2 and current_path[:2] == ["platform-managed-chart", "services"]:
+            return current_path[2]
+
+        service_configuration = self.service_instance_config.configuration
+        if service_name := service_configuration.get("platform-managed-chart", {}).get("serviceName"):
+            return service_name
+
+        return self.service_instance_config.service_group
 
 def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
     """Format validation error message"""
