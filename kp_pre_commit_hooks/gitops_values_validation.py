@@ -479,9 +479,9 @@ class ServiceInstanceConfigValidator:
                 )
 
     def validate_topic_name_compliance(self, value, schema):
+        service_name = self._get_current_service_name()
         match = TOPIC_NAME_REGEXP.match(str(value))
-        service_name = self.service_instance_config.service_name
-        if match and match["serviceName"] != service_name:
+        if match and match["serviceName"] not in (service_name, self.service_instance_config.service_group):
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
 
     def validate_max_local_topic_bytes_compliance(self, value, schema):
