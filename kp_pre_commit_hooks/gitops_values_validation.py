@@ -167,12 +167,22 @@ class HelmChart:
         return platform_managed_chart.version if platform_managed_chart else None
 
     @staticmethod
-    def from_chart_file(chart_file: Path):
-        chart = cast(dict, yaml.safe_load(chart_file.read_text()))
+    def from_chart_file(chart_file: Path, env: Optional[str] = None):
+        """Create HelmChart from Chart.yaml and optional Chart-{env}.yaml"""
+        chart_files = [chart_file]
+
+        if env:
+            env_specific_chart = chart_file.parent / f"Chart-{env}.yaml"
+            if env_specific_chart.exists():
+                chart_files.append(env_specific_chart)
+
+        charts_data = [yaml.safe_load(f.read_text()) for f in chart_files]
+        merged = deep_merge(*charts_data)
+
         return HelmChart(
-            name=chart["name"],
-            version=chart["version"],
-            dependencies=[HelmChart(dep["name"], dep["version"]) for dep in chart.get("dependencies", [])],
+            name=merged["name"],
+            version=merged["version"],
+            dependencies=[HelmChart(dep["name"], dep["version"]) for dep in merged.get("dependencies", [])],
         )
 
 
@@ -264,8 +274,8 @@ class ServiceInstanceConfig:
 
     @property
     def helm_chart(self) -> HelmChart:
-        """Get HelmChart from Chart.yaml"""
-        return HelmChart.from_chart_file(self.path / "Chart.yaml")
+        """Get HelmChart from Chart.yaml and optional Chart-{env}.yaml"""
+        return HelmChart.from_chart_file(self.path / "Chart.yaml", env=self.env)
 
     def sync_values_files_schema_header_version(self) -> None:
         """Sync schema version in all values files"""
