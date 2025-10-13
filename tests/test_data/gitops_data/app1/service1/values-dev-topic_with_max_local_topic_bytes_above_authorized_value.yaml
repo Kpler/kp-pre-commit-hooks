@@ -14,6 +14,6 @@ platform-managed-chart:
 
   managedResources:
     mskTopics:
-      position:
-        topicName: position.silver-v1
+      test:
+        topicName: service1.testtopic
         maxLocalTopicBytes: 5368709121

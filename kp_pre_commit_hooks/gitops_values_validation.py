@@ -68,6 +68,21 @@ ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
         "prod": {
             "max_limit": 536_870_912_000,  # 500GB
         }
+    },
+    # Test topics for unit tests
+    "service1.testtopic": {
+        "dev": {
+            "max_limit": 5_368_709_120,  # 5GB
+        },
+        "prod": {
+            "max_limit": 10_737_418_240,  # 10GB
+        }
+    },
+    "service1.testtopicdevonly": {
+        "dev": {
+            "max_limit": 5_368_709_120,  # 5GB
+        }
+        # Intentionally no prod config to test env-specific restrictions
     }
 }
 
