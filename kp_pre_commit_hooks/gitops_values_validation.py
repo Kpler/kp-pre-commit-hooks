@@ -292,12 +292,24 @@ class ServiceInstanceConfig:
         """Get HelmChart from Chart.yaml and optional Chart-{env}.yaml"""
         return HelmChart.from_chart_file(self.path / "Chart.yaml", env=self.env)
 
+    @property
+    def base_helm_chart(self) -> HelmChart:
+        """Get base HelmChart from Chart.yaml only (without env merge)"""
+        return HelmChart.from_chart_file(self.path / "Chart.yaml", env=None)
+
     def sync_values_files_schema_header_version(self) -> None:
         """Sync schema version in all values files"""
-        if self.helm_chart.platform_managed_chart_version is None:
+        base_version = self.base_helm_chart.platform_managed_chart_version
+        env_version = self.helm_chart.platform_managed_chart_version
+
+        if not base_version and not env_version:
             return
+
         for value_file in self.values_files:
-            value_file.set_header_schema_version(self.helm_chart.platform_managed_chart_version)
+            # values.yaml uses base version, values-{env}*.yaml use env-specific version
+            version = base_version if value_file.path.name == "values.yaml" else env_version
+            if version:
+                value_file.set_header_schema_version(version)
 
 
 class ServiceInstanceConfigValidator:
@@ -460,11 +472,16 @@ class ServiceInstanceConfigValidator:
 
     def iter_schema_validation_errors(self) -> Iterator[SchemaValidationError]:
         """Check schema version consistency"""
-        version = self.service_instance_config.helm_chart.platform_managed_chart_version
+        base_version = self.service_instance_config.base_helm_chart.platform_managed_chart_version
+        env_version = self.service_instance_config.helm_chart.platform_managed_chart_version
+
         for values_file in self.service_instance_config.values_files:
-            if values_file.header_schema_version != version:
+            # values.yaml should use base version, values-{env}*.yaml use env-specific version
+            expected_version = base_version if values_file.path.name == "values.yaml" else env_version
+
+            if expected_version and values_file.header_schema_version != expected_version:
                 yield SchemaValidationError(
-                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({version})",
+                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({expected_version})",
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
