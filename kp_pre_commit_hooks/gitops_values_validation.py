@@ -199,9 +199,9 @@ class HelmChart:
         merged = deep_merge(*charts_data)
 
         return HelmChart(
-            name=chart.get("name", ""),
-            version=chart.get("version", ""),
-            dependencies=[HelmChart(dep["name"], dep["version"]) for dep in chart.get("dependencies", [])],
+            name=merged.get("name", ""),
+            version=merged.get("version", ""),
+            dependencies=[HelmChart(dep["name"], dep["version"]) for dep in merged.get("dependencies", [])],
         )
 
 
