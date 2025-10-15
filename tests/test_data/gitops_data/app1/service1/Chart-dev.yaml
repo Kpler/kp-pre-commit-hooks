@@ -1,0 +1,3 @@
+dependencies:
+  - name: platform-managed-chart
+    version: 0.1.159

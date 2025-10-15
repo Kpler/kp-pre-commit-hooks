@@ -14,5 +14,5 @@ platform-managed-chart:
   managedResources:
     mskTopics:
       output:
-        topicName: service1.testtopic
+        topicName: service1.unauthorized
         maxLocalTopicBytes: 2147483648

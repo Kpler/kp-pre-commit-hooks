@@ -1,10 +1,12 @@
 import re
 import sys
 import textwrap
+from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
 from typing import Iterator, Literal, Mapping, Optional, Sequence, Union, cast
+import warnings
 
 import requests
 import semver
@@ -18,6 +20,14 @@ from termcolor import colored
 
 # Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# We subclass the validator to be able to intercept descend() call and track the current path
+# jsonschema doesn't like that, but until they implement it, we need to suppress the warning
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message=r".*Subclassing validator classes is not intended.*"
+)
 
 ###############################################################################
 # Constants and Configuration
@@ -62,6 +72,21 @@ ALLOWED_MAX_LOCAL_TOPIC_BYTES_BY_TOPIC_AND_ENV = {
         "prod": {
             "max_limit": 536_870_912_000,  # 500GB
         }
+    },
+    # Test topics for unit tests
+    "service1.testtopic": {
+        "dev": {
+            "max_limit": 5_368_709_120,  # 5GB
+        },
+        "prod": {
+            "max_limit": 10_737_418_240,  # 10GB
+        }
+    },
+    "service1.testtopicdevonly": {
+        "dev": {
+            "max_limit": 5_368_709_120,  # 5GB
+        }
+        # Intentionally no prod config to test env-specific restrictions
     }
 }
 
@@ -161,8 +186,18 @@ class HelmChart:
         return platform_managed_chart.version if platform_managed_chart else None
 
     @staticmethod
-    def from_chart_file(chart_file: Path):
-        chart = cast(dict, yaml.safe_load(chart_file.read_text()))
+    def from_chart_file(chart_file: Path, env: Optional[str] = None):
+        """Create HelmChart from Chart.yaml and optional Chart-{env}.yaml"""
+        chart_files = [chart_file]
+
+        if env:
+            env_specific_chart = chart_file.parent / f"Chart-{env}.yaml"
+            if env_specific_chart.exists():
+                chart_files.append(env_specific_chart)
+
+        charts_data = [yaml.safe_load(f.read_text()) for f in chart_files]
+        merged = deep_merge(*charts_data)
+
         return HelmChart(
             name=chart.get("name", ""),
             version=chart.get("version", ""),
@@ -180,6 +215,26 @@ class GitOpsRepository:
             service_name = instance_values_file.parent.name
             _, env, instance = instance_values_file.stem.split("-", maxsplit=2)
             yield ServiceInstanceConfig(application_name, service_name, env, instance, instance_values_file.parent, self)
+
+    def validate_unique_service_names(self) -> list[SchemaValidationError]:
+        """Validate that service names are unique across all applications"""
+        service_to_apps = defaultdict(set)
+
+        # Collect unique applications for each service name
+        for config in self.iter_service_instances_config():
+            service_to_apps[config.service_name].add(config.application_name)
+
+        # Generate errors for services appearing in multiple applications
+        return [
+            SchemaValidationError(
+                f"Service name '{service_name}' is used in multiple applications: {', '.join(sorted(apps))}. "
+                "Service names must be unique across all applications.",
+                location=f"Applications: {', '.join(sorted(apps))}",
+                hint="Rename one of the services to have a unique name across all applications in the repository."
+            )
+            for service_name, apps in service_to_apps.items()
+            if len(apps) > 1
+        ]
 
 
 @dataclass
@@ -225,6 +280,10 @@ class ServiceInstanceConfig:
     path: Path
     gitops_repository: GitOpsRepository
 
+    @property
+    def service_group(self) -> str:
+        return self.service_name
+
     def __str__(self) -> str:
         return f"{self.application_name}/{self.service_name} {self.instance} instance {self.env} configuration"
 
@@ -254,15 +313,28 @@ class ServiceInstanceConfig:
 
     @property
     def helm_chart(self) -> HelmChart:
-        """Get HelmChart from Chart.yaml"""
-        return HelmChart.from_chart_file(self.path / "Chart.yaml")
+        """Get HelmChart from Chart.yaml and optional Chart-{env}.yaml"""
+        return HelmChart.from_chart_file(self.path / "Chart.yaml", env=self.env)
+
+    @property
+    def base_helm_chart(self) -> HelmChart:
+        """Get base HelmChart from Chart.yaml only (without env merge)"""
+        return HelmChart.from_chart_file(self.path / "Chart.yaml", env=None)
 
     def sync_values_files_schema_header_version(self) -> None:
         """Sync schema version in all values files"""
-        if self.helm_chart.platform_managed_chart_version is None:
+        base_version = self.base_helm_chart.platform_managed_chart_version
+        env_version = self.helm_chart.platform_managed_chart_version
+
+        if not base_version and not env_version:
             return
+
         for value_file in self.values_files:
-            value_file.set_header_schema_version(self.helm_chart.platform_managed_chart_version)
+            # values.yaml uses base version, values-{env}*.yaml use env-specific version
+            version = base_version if value_file.path.name == "values.yaml" else env_version
+            if version:
+                value_file.set_header_schema_version(version)
+
 
 class ServiceInstanceConfigValidator:
 
@@ -359,21 +431,44 @@ class ServiceInstanceConfigValidator:
         },
         "mt-tropical-storm-service": {
             "$.platform-managed-chart.api.ingress": ["Additional properties are not allowed ('enable_ssl_redirect' was unexpected)"]
+        },
+        "mcp-test": {
+            "$.platform-managed-chart.api.deployment": [
+                "Additional properties are not allowed ('nodeSelector', 'tolerations' were unexpected)"
+            ]
+        },
+        "platform-webhooks": {
+            "$.platform-managed-chart.api.deployment": [
+                "Additional properties are not allowed ('tolerations' was unexpected)"
+            ]
         }
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
         self.service_instance_config = service_instance_config
+        self._current_path = []
 
     @cached_property
     def validator(self) -> Validator:
         """Create JSON schema validator"""
-        validator_class = validators.validates("draft7")(
-            validators.extend(
-                Draft7Validator,
-                validators={"additionalChecks": self.validate_additional_checks}
-            )
+
+        base_validator_class = validators.extend(
+            Draft7Validator,
+            validators={"additionalChecks": self.validate_additional_checks}
         )
+
+        # We wrap the validator to intercept descend() and track the current path
+        # as this information is not provided by json schema otherwise
+        outer_self = self
+        class PathTrackingValidator(base_validator_class):
+            def descend(self, instance, schema, path=None, schema_path=None, resolver=None):
+                outer_self._current_path.append(path)
+                try:
+                    yield from super().descend(instance, schema, path, schema_path, resolver)
+                finally:
+                    outer_self._current_path.pop()
+
+        validator_class = validators.validates("draft7")(PathTrackingValidator)
         return validator_class(
             self.service_instance_config.helm_chart.json_schema,
             registry=SCHEMA_REGISTRY
@@ -402,11 +497,16 @@ class ServiceInstanceConfigValidator:
 
     def iter_schema_validation_errors(self) -> Iterator[SchemaValidationError]:
         """Check schema version consistency"""
-        version = self.service_instance_config.helm_chart.platform_managed_chart_version
+        base_version = self.service_instance_config.base_helm_chart.platform_managed_chart_version
+        env_version = self.service_instance_config.helm_chart.platform_managed_chart_version
+
         for values_file in self.service_instance_config.values_files:
-            if values_file.header_schema_version != version:
+            # values.yaml should use base version, values-{env}*.yaml use env-specific version
+            expected_version = base_version if values_file.path.name == "values.yaml" else env_version
+
+            if expected_version and values_file.header_schema_version != expected_version:
                 yield SchemaValidationError(
-                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({version})",
+                    f"JSON schema version in header ({values_file.header_schema_version}) does not match version in Chart.yaml ({expected_version})",
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
@@ -457,13 +557,29 @@ class ServiceInstanceConfigValidator:
                 yield from check_method(value, schema)
 
     def validate_service_name_matches_service_folder(self, value, schema):
-        if self.service_instance_config.path.name != value:
-            yield ValidationError(f"'{value}' does not match the service folder name '{self.service_instance_config.path.name}'")
+        folder_name = self.service_instance_config.path.name
+        if folder_name != value and not value.startswith(f"{folder_name}-"):
+            yield ValidationError(
+                f"'{value}' does not match the service folder name '{folder_name}'"
+                f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
+            )
+
+    def validate_service_keys_match_service_folder(self, value, schema):
+        if not isinstance(value, dict):
+            return
+
+        folder_name = self.service_instance_config.path.name
+        for service_key in value:
+            if folder_name != service_key and not service_key.startswith(f"{folder_name}-"):
+                yield ValidationError(
+                    f"'{service_key}' does not match the service folder name '{folder_name}'"
+                    f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
+                )
 
     def validate_topic_name_compliance(self, value, schema):
+        service_name = self._get_current_service_name()
         match = TOPIC_NAME_REGEXP.match(str(value))
-        service_name = self.service_instance_config.service_name
-        if match and match["serviceName"] != service_name:
+        if match and match["serviceName"] not in (service_name, self.service_instance_config.service_group):
             yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
 
     def validate_max_local_topic_bytes_compliance(self, value, schema):
@@ -500,6 +616,20 @@ class ServiceInstanceConfigValidator:
                     schema={"description": f"Remove `{env_variable}` from your environment variables.\n{forbidden_reason}"},
                 )
 
+    def _get_current_path(self) -> list[str]:
+        return [part for part in self._current_path if part is not None]
+
+    def _get_current_service_name(self) -> str:
+        current_path = self._get_current_path()
+        if len(current_path) > 2 and current_path[:2] == ["platform-managed-chart", "services"]:
+            return current_path[2]
+
+        service_configuration = self.service_instance_config.configuration
+        if service_name := service_configuration.get("platform-managed-chart", {}).get("serviceName"):
+            return service_name
+
+        return self.service_instance_config.service_group
+
 def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
     """Format validation error message"""
     if isinstance(error, SchemaValidationError):
@@ -511,9 +641,10 @@ def format_error(error: Union[ValidationError, SchemaValidationError]) -> str:
         error_message = f"{colorize('ERROR:', 'red')} {error.message}\n   at: {colorize(location, bold=True)}"
 
         if isinstance(error.schema, Mapping) and "description" in error.schema:
-            title, description = error.schema["description"].split("\n", maxsplit=1)
+            title, _, description = error.schema["description"].partition("\n")
             error_message += f"\n\n {colorize('Hint:', bold=True)} {title}\n\n"
-            error_message += textwrap.indent(description, prefix=" " * 7)
+            if description:
+                error_message += textwrap.indent(description, prefix=" " * 7)
 
     return error_message
 
@@ -541,6 +672,19 @@ if __name__ == "__main__":
 
     try:
         errors_found = False
+
+        print("Checking repository-level constraints...")
+        repo_errors = gitops_repository.validate_unique_service_names()
+
+        if repo_errors:
+            errors_found = True
+            print(f"\n{colorize('REPOSITORY VALIDATION FAILED:', 'red')}")
+            for error in repo_errors:
+                print(textwrap.indent(format_error(error), prefix=" " * 2) + "\n")
+        else:
+            print(colorize("Repository constraints PASSED", "green"))
+
+        # Individual service instance validations
         for service_instance_config in gitops_repository.iter_service_instances_config():
             print(f"Checking {service_instance_config} ", end="")
 
