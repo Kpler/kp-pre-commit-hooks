@@ -518,7 +518,9 @@ class ServiceInstanceConfigValidator:
 
     def is_ignored_error(self, error: ValidationError) -> bool:
         ignored_errors_for_service = self.IGNORED_VALIDATION_ERRORS.get(self.service_instance_config.service_name, {})
-        return error.message in ignored_errors_for_service.get(error.json_path, [])
+        # For some reasons, the json_path format slightly changed so we make it compatible with our current rules
+        json_path = error.json_path.replace("$['platform-managed-chart']", "$.platform-managed-chart")
+        return error.message in ignored_errors_for_service.get(json_path, [])
 
     def validate_additional_checks(self, validator, additional_checks, value, schema):
         for check in additional_checks:
