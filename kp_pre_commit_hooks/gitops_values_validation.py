@@ -426,6 +426,10 @@ class ServiceInstanceConfigValidator:
         "route-finder-api": {
             "$.platform-managed-chart.api.startupProbe.initialDelaySeconds": ["2400 is greater than the maximum of 300"]
         },
+        "route-finder": {
+            "$.platform-managed-chart.api.startupProbe.initialDelaySeconds": ["2400 is greater than the maximum of 300"],
+            "$.platform-managed-chart.api.startupProbe.failureThreshold": ["15 is greater than the maximum of 10"]
+        },
         "mt-tropical-storm-service": {
             "$.platform-managed-chart.api.ingress": ["Additional properties are not allowed ('enable_ssl_redirect' was unexpected)"]
         },
