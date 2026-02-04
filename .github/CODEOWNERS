@@ -1,0 +1,16 @@
+# CODEOWNERS for kp-pre-commit-hooks
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @Kpler/role-dev
+
+# Kafka schema validation
+/kafka/ @Kpler/crew-cloud-platform-dev
+
+# GitOps validation (GitHub/ArgoCD)
+/kp_pre_commit_hooks/gitops_*.py @Kpler/crew-cloud-platform-dev
+/kp_pre_commit_hooks/image_acceptance_rules.yaml @Kpler/crew-cloud-platform-dev
+/kp_pre_commit_hooks/allowed_image_prefixes.py @Kpler/crew-cloud-platform-dev
+
+# Terraform compliance
+/kp_pre_commit_hooks/terraform_*.py @Kpler/crew-cloud-platform-dev
