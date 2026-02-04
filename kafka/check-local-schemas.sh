@@ -111,7 +111,14 @@ trap clean_temporary_folder EXIT
 
 language="$(detect_current_project_language)"
 
-before_schema_generation="$(date --date='-1 second' +'%Y-%m-%d %H:%M:%S')"
+# Cross-platform date command (1 second in the past)
+if date --version &>/dev/null; then
+  # GNU date (Linux)
+  before_schema_generation="$(date --date='-1 second' +'%Y-%m-%d %H:%M:%S')"
+else
+  # BSD date (macOS)
+  before_schema_generation="$(date -v-1S +'%Y-%m-%d %H:%M:%S')"
+fi
 
 # shellcheck disable=SC2046
 schema_md5sum_before="$(md5sum_files $(find_schema_files))"
