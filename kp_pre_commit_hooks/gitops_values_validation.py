@@ -48,6 +48,9 @@ TOPIC_NAME_REGEXP = re.compile(
 
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
 
+MIN_PLATFORM_MANAGED_CHART_VERSION_STR = "0.1.100"
+MIN_PLATFORM_MANAGED_CHART_VERSION = semver.VersionInfo.parse(MIN_PLATFORM_MANAGED_CHART_VERSION_STR)
+
 # Environment variables that should not be overridden
 FORBIDDEN_ENVIRONMENT_VARIABLES = {
     "KAFKA_APPLICATION_ID": """KAFKA_APPLICATION_ID is automatically set in your container and should not be overridden.
@@ -196,8 +199,8 @@ class HelmChart:
         merged = deep_merge(*charts_data)
 
         return HelmChart(
-            name=merged["name"],
-            version=merged["version"],
+            name=merged.get("name", ""),
+            version=merged.get("version", ""),
             dependencies=[HelmChart(dep["name"], dep["version"]) for dep in merged.get("dependencies", [])],
         )
 
@@ -484,7 +487,8 @@ class ServiceInstanceConfigValidator:
             ]
             validation_errors = [error for error in raw_validation_errors if not self.is_ignored_error(error)]
             schema_validation_errors = list(self.iter_schema_validation_errors())
-            return validation_errors + schema_validation_errors
+            chart_validation_errors = list(self.iter_chart_validation_errors())
+            return validation_errors + schema_validation_errors + chart_validation_errors
 
         except MissingSchema as error:
             version = self.service_instance_config.helm_chart.platform_managed_chart_version
@@ -510,6 +514,37 @@ class ServiceInstanceConfigValidator:
                     location=f"values file {values_file}",
                     hint="This pre-commit hook will auto-fix this issue. Please commit the values files changes.",
                 )
+
+    def iter_chart_validation_errors(self) -> Iterator[SchemaValidationError]:
+        """Validate Chart.yaml and Chart-dev.yaml for minimum platform-managed-chart version."""
+        chart_files_to_check = ["Chart.yaml", "Chart-dev.yaml"]
+        for chart_filename in chart_files_to_check:
+            chart_file_path = self.service_instance_config.path / chart_filename
+            if not chart_file_path.exists():
+                continue
+
+            helm_chart = HelmChart.from_chart_file(chart_file_path)
+
+            chart_version_str = helm_chart.platform_managed_chart_version
+            if chart_version_str:
+                try:
+                    # To treat pre-release versions like '0.1.169-pr123' as '0.1.169',
+                    # we strip the pre-release part before parsing.
+                    core_version_str = chart_version_str.split('-')[0]
+                    chart_version = semver.VersionInfo.parse(core_version_str)
+                    if chart_version.compare(MIN_PLATFORM_MANAGED_CHART_VERSION) < 0:
+                        yield SchemaValidationError(
+                            f"platform-managed-chart version {chart_version_str} is far behind the latest version",
+                            location=f"file {chart_file_path.relative_to(self.service_instance_config.gitops_repository.gitops_path)}",
+                            hint="Please upgrade the platform-managed-chart dependency to the latest version."
+                        )
+                except ValueError:
+                    # Not a valid semver string.
+                    yield SchemaValidationError(
+                        f"platform-managed-chart version '{chart_version_str}' is not a valid semantic version.",
+                        location=f"file {chart_file_path.relative_to(self.service_instance_config.gitops_repository.gitops_path)}",
+                        hint="Please use a valid semver version for platform-managed-chart."
+                    )
 
     def enrich_error_message(self, error: ValidationError) -> ValidationError:
         if error.message.endswith("is too long") and isinstance(error.schema, Mapping) and error.schema.get("maxLength"):
