@@ -93,3 +93,42 @@ def test_env_specific_chart_version_is_used_for_validation(
 
     # THEN - Should use the base version from Chart.yaml (no Chart-prod.yaml exists)
     assert chart_version_prod == "0.1.157-pr195", f"Expected prod chart version '0.1.157-pr195', got '{chart_version_prod}'"
+
+
+def test_kafka_streams_changelog_topic_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service2/values-dev-topic_kafka_streams_changelog.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 0, f"Kafka Streams changelog topics should be accepted, got: {errors}"
+
+
+def test_kafka_streams_repartition_topic_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service2/values-dev-topic_kafka_streams_repartition.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 0, f"Kafka Streams repartition topics should be accepted, got: {errors}"
+
+
+def test_topic_with_wrong_service_name_is_rejected(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service2/values-dev-topic_with_wrong_service_name.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert any("it not compliant" in e.message for e in errors), f"Expected topic name compliance error, got: {errors}"
