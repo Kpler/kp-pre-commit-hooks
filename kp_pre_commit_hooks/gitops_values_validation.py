@@ -45,6 +45,8 @@ SCHEMA_HEADER_REGEXP = re.compile(
 TOPIC_NAME_REGEXP = re.compile(
     r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*(-[0-9]+)?(\.[a-z0-9]+)?$"
 )
+# Kafka Streams internal topics: {applicationId}-{name}-(changelog|repartition)
+KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP = re.compile(r"^[a-z][a-z0-9-]*-(changelog|repartition)$")
 
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
 
@@ -548,10 +550,14 @@ class ServiceInstanceConfigValidator:
                 )
 
     def validate_topic_name_compliance(self, value, schema):
+        topic_name = str(value)
+        # Kafka Streams internal topics (changelog, repartition) don't follow the serviceName.dataIdentifier convention
+        if KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP.match(topic_name):
+            return
         service_name = self._get_current_service_name()
-        match = TOPIC_NAME_REGEXP.match(str(value))
+        match = TOPIC_NAME_REGEXP.match(topic_name)
         if match and match["serviceName"] not in (service_name, self.service_instance_config.service_group):
-            yield ValidationError(f"topicName '{value}' it not compliant, it should contain the service name '{service_name}'")
+            yield ValidationError(f"topicName '{topic_name}' it not compliant, it should contain the service name '{service_name}'")
 
     def validate_max_local_topic_bytes_compliance(self, value, schema):
 
