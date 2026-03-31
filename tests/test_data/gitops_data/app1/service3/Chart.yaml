@@ -1,0 +1,6 @@
+apiVersion: v2
+name: service3
+version: 0.1.0
+dependencies:
+  - name: platform-managed-chart
+    version: 0.1.223-pr313
