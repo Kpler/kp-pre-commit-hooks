@@ -43,7 +43,7 @@ SCHEMA_HEADER_REGEXP = re.compile(
 
 # Validate topic names follow pattern: (private.)?serviceName.topic(-version)?(.suffix)?
 TOPIC_NAME_REGEXP = re.compile(
-    r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*(-[0-9]+)?(\.[a-z0-9]+)?$"
+    r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*(-v[0-9]+)?(\.[a-z0-9-]+)?$"
 )
 # Kafka Streams internal topics: {applicationId}-{name}-(changelog|repartition)
 KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP = re.compile(r"^[a-z][a-z0-9-]*-(changelog|repartition)$")
