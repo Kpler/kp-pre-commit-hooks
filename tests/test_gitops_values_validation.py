@@ -99,7 +99,7 @@ def test_kafka_streams_changelog_topic_is_accepted(
     create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
 ) -> None:
     # GIVEN
-    validator = create_validator_for_test_file("app1/service2/values-dev-topic_kafka_streams_changelog.yaml")
+    validator = create_validator_for_test_file("app1/service3/values-dev-changelog.yaml")
 
     # WHEN
     errors = validator.validate_configuration()
@@ -112,13 +112,28 @@ def test_kafka_streams_repartition_topic_is_accepted(
     create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
 ) -> None:
     # GIVEN
-    validator = create_validator_for_test_file("app1/service2/values-dev-topic_kafka_streams_repartition.yaml")
+    validator = create_validator_for_test_file("app1/service3/values-dev-repartition.yaml")
 
     # WHEN
     errors = validator.validate_configuration()
 
     # THEN
     assert len(errors) == 0, f"Kafka Streams repartition topics should be accepted, got: {errors}"
+
+
+def test_kafka_streams_internal_topic_with_wrong_prefix_is_rejected(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service3/values-dev-wrong-prefix.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert any("must start with 'service3-wrong-prefix-'" in e.message for e in errors), (
+        f"Expected internal topic prefix error, got: {errors}"
+    )
 
 
 def test_topic_with_wrong_service_name_is_rejected(

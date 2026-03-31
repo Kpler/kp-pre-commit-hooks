@@ -552,7 +552,16 @@ class ServiceInstanceConfigValidator:
     def validate_topic_name_compliance(self, value, schema):
         topic_name = str(value)
         # Kafka Streams internal topics (changelog, repartition) don't follow the serviceName.dataIdentifier convention
+        # but must start with {serviceName}-{instanceName}- to prevent copy-paste mistakes across instances
         if KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP.match(topic_name):
+            service_name = self._get_current_service_name()
+            instance = self.service_instance_config.instance
+            expected_prefix = f"{service_name}-{instance}-"
+            if not topic_name.startswith(expected_prefix):
+                yield ValidationError(
+                    f"Internal topic '{topic_name}' is not compliant, "
+                    f"it must start with '{expected_prefix}' (serviceName-instanceName)"
+                )
             return
         service_name = self._get_current_service_name()
         match = TOPIC_NAME_REGEXP.match(topic_name)
