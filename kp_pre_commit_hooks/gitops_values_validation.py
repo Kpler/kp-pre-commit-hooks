@@ -41,7 +41,9 @@ SCHEMA_HEADER_REGEXP = re.compile(
     re.MULTILINE
 )
 
-# Validate topic names follow pattern: (private.)?serviceName.topic(-version)?(.suffix)?
+# Matches standard topic names to extract the serviceName for ownership checks.
+# Format validation (e.g. enforcing -vN over -N) is the chart schema's responsibility;
+# this regexp only needs to match what the schema accepts so the service name check fires correctly.
 TOPIC_NAME_REGEXP = re.compile(
     r"^(private\.)?(?P<serviceName>[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*(-v[0-9]+)?(\.[a-z0-9-]+)?$"
 )
