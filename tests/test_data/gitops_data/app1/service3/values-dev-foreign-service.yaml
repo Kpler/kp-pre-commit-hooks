@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://kp-helmchart-stable-shared-main.s3.eu-west-1.amazonaws.com/schema/platform-managed-chart/v0.1.223-pr313/schema-platform-managed-chart.json
-# Test file: Kafka Streams changelog internal topic
+# Test file: Kafka Streams internal topic from a foreign service (wrong serviceName prefix)
 platform-managed-chart:
-  serviceName: service2
+  serviceName: service3
   teamOwner: team1
   env: dev
   workloadType: stream
@@ -15,4 +15,4 @@ platform-managed-chart:
   managedResources:
     mskTopics:
       output:
-        topicName: service2-changelog
+        topicName: otherservice-foreign-service-mystore-changelog

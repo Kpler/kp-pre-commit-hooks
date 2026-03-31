@@ -147,3 +147,44 @@ def test_topic_with_wrong_service_name_is_rejected(
 
     # THEN
     assert any("it not compliant" in e.message for e in errors), f"Expected topic name compliance error, got: {errors}"
+
+
+def test_kafka_streams_internal_topic_from_foreign_service_is_rejected(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service3/values-dev-foreign-service.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert any("must start with 'service3-foreign-service-'" in e.message for e in errors), (
+        f"Expected internal topic prefix error for foreign service topic, got: {errors}"
+    )
+
+
+def test_versioned_topic_with_v_prefix_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service1/values-dev-versioned-topic.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 0, f"Topic with -vN version suffix should be accepted, got: {errors}"
+
+
+def test_topic_with_hyphenated_suffix_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service1/values-dev-hyphenated-suffix.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 0, f"Topic with hyphenated suffix should be accepted, got: {errors}"
