@@ -50,6 +50,9 @@ TOPIC_NAME_REGEXP = re.compile(
 # Kafka Streams internal topics: {applicationId}-{name}-(changelog|repartition)
 KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP = re.compile(r"^[a-z][a-z0-9-]*-(changelog|repartition)$")
 
+# Matches any Go template block {{ ... }}
+TEMPLATE_BLOCK_REGEXP = re.compile(r"\{\{[^}]*\}\}")
+
 TWINGATE_DOC_URL = "https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client"
 
 # Environment variables that should not be overridden
@@ -551,8 +554,37 @@ class ServiceInstanceConfigValidator:
                     f" Must be either '{folder_name}' or '{folder_name}-<suffix>'"
                 )
 
+    def _resolve_topic_name_template(self, template: str) -> str:
+        """Replace known context variables with actual values, others with a placeholder.
+
+        This allows validating the structure of a topicNameTemplate as if it were
+        a static topicName, by substituting the context variables the chart would
+        inject at render time.
+        """
+        service_name = self._get_current_service_name()
+        instance = self.service_instance_config.instance
+
+        replacements = {
+            "$.context.serviceInstanceName": f"{service_name}-{instance}",
+            "$.context.serviceName": service_name,
+            "$.context.instanceName": instance,
+            "$.context.env": self.service_instance_config.env,
+        }
+
+        result = template
+        for var, val in replacements.items():
+            result = result.replace(f"{{{{ {var} }}}}", val)
+
+        # Replace remaining unknown template blocks with a generic placeholder
+        result = TEMPLATE_BLOCK_REGEXP.sub("x", result)
+        return result
+
     def validate_topic_name_compliance(self, value, schema):
-        topic_name = str(value)
+        current_path = self._get_current_path()
+        is_template = current_path and current_path[-1] == "topicNameTemplate"
+
+        topic_name = self._resolve_topic_name_template(str(value)) if is_template else str(value)
+
         # Kafka Streams internal topics (changelog, repartition) don't follow the serviceName.dataIdentifier convention
         # but must start with {serviceName}-{instanceName}- to prevent copy-paste mistakes across instances
         if KAFKA_STREAMS_INTERNAL_TOPIC_REGEXP.match(topic_name):

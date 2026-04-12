@@ -188,3 +188,31 @@ def test_topic_with_hyphenated_suffix_is_accepted(
 
     # THEN
     assert len(errors) == 0, f"Topic with hyphenated suffix should be accepted, got: {errors}"
+
+
+def test_kafka_streams_changelog_topic_template_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service3/values-dev-tpl-valid.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 0, f"Kafka Streams changelog topic template should be accepted, got: {errors}"
+
+
+def test_kafka_streams_changelog_topic_template_with_wrong_prefix_is_rejected(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN
+    validator = create_validator_for_test_file("app1/service3/values-dev-tpl-wrong.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert any("must start with 'service3-tpl-wrong-'" in e.message for e in errors), (
+        f"Expected internal topic prefix error for template with wrong instance, got: {errors}"
+    )
