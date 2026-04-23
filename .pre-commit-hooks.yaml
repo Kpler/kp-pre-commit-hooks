@@ -60,3 +60,21 @@
     always_run: true
     pass_filenames: false
     files: \.tfvars$
+
+-   id: zizmor-workflows
+    name: Audit GitHub Actions workflows with zizmor (offline)
+    language: python
+    entry: zizmor --offline
+    args: [--min-severity=high]
+    files: ^\.github/(workflows/.*\.ya?ml|actions/.*/action\.ya?ml)$
+    stages: [pre-commit]
+    additional_dependencies: [zizmor==1.24.1]
+
+-   id: zizmor-workflows-online
+    name: Audit GitHub Actions workflows with zizmor (online, requires GH_TOKEN)
+    language: python
+    entry: zizmor
+    args: [--min-severity=high]
+    files: ^\.github/(workflows/.*\.ya?ml|actions/.*/action\.ya?ml)$
+    stages: [manual]
+    additional_dependencies: [zizmor==1.24.1]
