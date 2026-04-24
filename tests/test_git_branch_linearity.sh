@@ -38,8 +38,10 @@ trap on_exit EXIT
 
 setup_origin_with_linear_branch() {
     # Build an "origin" bare repo with:
-    #   - main at commit M1
-    #   - feature branched from M1, with one additional linear commit F1
+    #   - main at commit M3 (three commits: M1, M2, M3)
+    #   - feature branched from M3, with one additional linear commit F1
+    # main has multiple commits so shallow-ification (truncation to 1 commit)
+    # is observable in tests that inspect origin/main history afterwards.
     WORKDIR=$(mktemp -d)
     ORIGIN="$WORKDIR/origin.git"
     UPSTREAM="$WORKDIR/upstream"
@@ -55,6 +57,10 @@ setup_origin_with_linear_branch() {
         echo initial > file.txt
         git add file.txt
         git -c commit.gpgsign=false commit -q -m "M1 initial"
+        echo two >> file.txt
+        git -c commit.gpgsign=false commit -qam "M2"
+        echo three >> file.txt
+        git -c commit.gpgsign=false commit -qam "M3"
         git push -q origin main
 
         git checkout -q -b feature/linear
@@ -106,6 +112,29 @@ expect_exit() {
     fi
 }
 
+expect_not_shallow() {
+    name=$1; repo=$2
+    if [ -f "$repo/.git/shallow" ]; then
+        fail=$((fail + 1))
+        echo "FAIL  $name: .git/shallow exists, repo was unexpectedly shallow-ified"
+    else
+        pass=$((pass + 1))
+        echo "PASS  $name"
+    fi
+}
+
+expect_full_main_history() {
+    name=$1; repo=$2; want_count=$3
+    got=$(git -C "$repo" rev-list --count origin/main)
+    if [ "$got" -eq "$want_count" ]; then
+        pass=$((pass + 1))
+        echo "PASS  $name"
+    else
+        fail=$((fail + 1))
+        echo "FAIL  $name: origin/main has $got commits, expected $want_count"
+    fi
+}
+
 # --------------------------------------------------------------------------
 # Test 1: linear branch in a shallow CI clone with GITHUB_HEAD_REF should pass
 # --------------------------------------------------------------------------
@@ -151,6 +180,25 @@ git clone -q --branch feature/linear "$ORIGIN" "$LOCAL_REPO"
 
 expect_exit 1 "local (no GITHUB_HEAD_REF), branch has merge commit" \
     env -C "$LOCAL_REPO" -u GITHUB_HEAD_REF "$HOOK" main
+
+rm -rf "$WORKDIR"
+
+# --------------------------------------------------------------------------
+# Test 5: local full clone must not be shallow-ified by the hook.
+#
+# Regression test for the v0.57.0/v0.58.0 bug where the unconditional
+# `git fetch --depth=1 origin main` truncated origin/main to a single commit
+# on full clones, leaving the developer's local main detached from prior
+# history. Reported by @tmaurin in the Slack thread that triggered PR 73.
+# --------------------------------------------------------------------------
+setup_origin_with_linear_branch
+LOCAL_REPO="$WORKDIR/local"
+git clone -q --branch feature/linear "$ORIGIN" "$LOCAL_REPO"
+
+env -C "$LOCAL_REPO" -u GITHUB_HEAD_REF "$HOOK" main > /dev/null 2>&1
+
+expect_not_shallow "local full clone stays non-shallow after hook run" "$LOCAL_REPO"
+expect_full_main_history "local origin/main keeps full history (3 commits)" "$LOCAL_REPO" 3
 
 rm -rf "$WORKDIR"
 

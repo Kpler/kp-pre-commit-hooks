@@ -4,7 +4,18 @@
 TARGET_BRANCH="${1:-main}"
 
 echo "Target branch: $TARGET_BRANCH"
-git fetch --no-tags --depth=1 origin "$TARGET_BRANCH"
+
+# Only fetch shallowly if the clone is already shallow. On a full local clone
+# (typical dev setup), `--depth=1` would truncate origin/$TARGET_BRANCH to a
+# single commit and write a `.git/shallow` file, leaving the developer's main
+# detached from prior history.
+if [ -f "$(git rev-parse --git-dir)/shallow" ]; then
+    fetch_depth="--depth=1"
+else
+    fetch_depth=""
+fi
+
+git fetch --no-tags $fetch_depth origin "$TARGET_BRANCH"
 target_sha=$(git rev-parse FETCH_HEAD)
 
 # If in a github PR, base from tip of branch, not the merge commit.
