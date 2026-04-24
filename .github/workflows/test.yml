@@ -1,0 +1,26 @@
+name: test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  git-branch-linearity:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run git-branch-linearity tests
+        run: ./tests/test_git_branch_linearity.sh
+
+  # Runs the hook on itself in a real PR context (actions/checkout default
+  # shallow clone + GITHUB_HEAD_REF). This is the exact setup that broke in
+  # v0.57.0.
+  git-branch-linearity-self:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run hook against PR branch
+        run: ./git-branch-linearity.sh ${{ github.base_ref }}

@@ -4,21 +4,30 @@
 TARGET_BRANCH="${1:-main}"
 
 echo "Target branch: $TARGET_BRANCH"
-git fetch --no-tags --depth=1 origin $TARGET_BRANCH 2> /dev/null
-target_sha=$(git rev-parse origin/${TARGET_BRANCH})
+git fetch --no-tags --depth=1 origin "$TARGET_BRANCH"
+target_sha=$(git rev-parse FETCH_HEAD)
 
-# If in a github PR, base from tip of branch, not the merge commit
+# If in a github PR, base from tip of branch, not the merge commit.
 if [ -n "$GITHUB_HEAD_REF" ]; then
-    git fetch --no-tags --shallow-exclude="$target_sha" origin "$GITHUB_HEAD_REF"  2> /dev/null
-    tip=$(git rev-parse origin/$GITHUB_HEAD_REF)
+    # --shallow-exclude requires a ref name (branch/tag), not a SHA: the value
+    # is forwarded to the server as `deepen-not <ref>` in protocol v2, which
+    # rejects commit ids.
+    if ! git fetch --no-tags --shallow-exclude="$TARGET_BRANCH" origin "$GITHUB_HEAD_REF"; then
+        # Fallback for remotes that do not honor shallow-exclude.
+        git fetch --no-tags origin "$GITHUB_HEAD_REF"
+    fi
+    # Read from FETCH_HEAD rather than origin/$GITHUB_HEAD_REF: the origin
+    # remote in a CI clone (actions/checkout, clone --depth=1) has a narrow
+    # refspec that does not map arbitrary branches into refs/remotes/origin/*.
+    tip=$(git rev-parse FETCH_HEAD)
 else
     tip="HEAD"
 fi
 
-out=$(git log ${target_sha}..${tip} --merges --oneline)
+out=$(git log "${target_sha}..${tip}" --merges --oneline)
 exit_status=$?
 
-if [ -n  "$out" ]
+if [ -n "$out" ]
 then
     echo "Please rebase your branch" >&2
     echo "If your branch or its base branch is a release branch then ignore this error" >&2
