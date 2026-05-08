@@ -5,3 +5,5 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+    cooldown: # Reduce supply chain attack risk
+      default-days: 7
