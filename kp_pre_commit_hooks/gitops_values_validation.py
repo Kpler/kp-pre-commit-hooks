@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 import textwrap
@@ -142,16 +143,33 @@ class SchemaValidationError(Exception):
     hint: Optional[str] = None
 
 
+SCHEMA_CACHE_DIR = Path.home() / ".cache" / "pre-commit" / "kp-pre-commit-hooks" / "schemas"
+
+
 @cache
 def download_json_schema(url: str) -> dict:
-    """Download and cache JSON schema from URL"""
+    """Download JSON schema, using a persistent disk cache for versioned URLs."""
+    filename = url.removeprefix(SCHEMA_BASE_URL + "/").replace("/", "_")
+    cache_file = SCHEMA_CACHE_DIR / filename
+
+    if cache_file.exists():
+        try:
+            return json.loads(cache_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            warnings.warn(f"Corrupted schema cache file {cache_file}, re-downloading")
+            cache_file.unlink(missing_ok=True)
+
     response = requests.get(url, timeout=10, verify=True)
     if response.status_code == 403:
         raise UnauthorizedToDownloadSchema(url)
     if response.status_code == 404:
         raise MissingSchema(url)
     response.raise_for_status()
-    return response.json()
+
+    schema = response.json()
+    SCHEMA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file.write_text(json.dumps(schema))
+    return schema
 
 # Registry for resolving schema references
 SCHEMA_REGISTRY = REGISTRY.combine(
