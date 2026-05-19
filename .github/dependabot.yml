@@ -11,5 +11,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    cooldown:
+    cooldown: # Reduce supply chain attacks risk
       default-days: 7
+    labels:
+      - "dependencies"
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
