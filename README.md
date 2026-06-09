@@ -80,7 +80,7 @@ repos:
       - id: terraform-repo-compliance
 ```
 
-[example of implementation]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/src/ci/scala/schema_generator/VulcanSchemaGenerator.scala
+[example of implementation]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/schemaGenerator/src/main/scala/VulcanSchemaGenerator.scala
 [sbt command]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/build.sbt#L75
 
 ### Contributing
