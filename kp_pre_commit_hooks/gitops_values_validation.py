@@ -464,7 +464,15 @@ class ServiceInstanceConfigValidator:
             "$.platform-managed-chart.api.deployment": [
                 "Additional properties are not allowed ('tolerations' was unexpected)"
             ]
-        }
+        },
+        "archibot": {
+            "$.platform-managed-chart.services['archibot-db-gateway'].livenessProbe.httpGet": [
+                "Additional properties are not allowed ('port' was unexpected)"
+            ],
+            "$.platform-managed-chart.services['archibot-db-gateway'].readinessProbe.httpGet": [
+                "Additional properties are not allowed ('port' was unexpected)"
+            ],
+        },
     }
 
     def __init__(self, service_instance_config: ServiceInstanceConfig):
