@@ -465,10 +465,6 @@ class ServiceInstanceConfigValidator:
                 "Additional properties are not allowed ('tolerations' was unexpected)"
             ]
         },
-        # Chart templates honor httpGet.port (default image.port), but the strict
-        # values schema only allows path. Whitelist until platform-managed-chart
-        # schema accepts port (needed for archibot-db-gateway :8080 /healthz while
-        # image.port stays on TLS :8443).
         "archibot": {
             "$.platform-managed-chart.services['archibot-db-gateway'].livenessProbe.httpGet": [
                 "Additional properties are not allowed ('port' was unexpected)"
