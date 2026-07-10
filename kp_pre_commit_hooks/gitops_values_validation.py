@@ -465,11 +465,12 @@ class ServiceInstanceConfigValidator:
                 "Additional properties are not allowed ('tolerations' was unexpected)"
             ]
         },
+        # jsonschema 4.19.0 emits hyphenated keys with dot notation (not brackets).
         "archibot": {
-            "$.platform-managed-chart.services['archibot-db-gateway'].livenessProbe.httpGet": [
+            "$.platform-managed-chart.services.archibot-db-gateway.livenessProbe.httpGet": [
                 "Additional properties are not allowed ('port' was unexpected)"
             ],
-            "$.platform-managed-chart.services['archibot-db-gateway'].readinessProbe.httpGet": [
+            "$.platform-managed-chart.services.archibot-db-gateway.readinessProbe.httpGet": [
                 "Additional properties are not allowed ('port' was unexpected)"
             ],
         },
