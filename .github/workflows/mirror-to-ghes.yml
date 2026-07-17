@@ -1,0 +1,63 @@
+# mirror-to-ghes.yml
+#
+# Mirrors this repository (github.com/Kpler/kp-pre-commit-hooks) to the Maritime
+# AIS GitHub Enterprise Server instance on every push to main.
+#
+# Authentication uses a GitHub App installed on the GHES instance — no PAT.
+# A short-lived installation token is generated at runtime and used as the
+# remote credential, so no long-lived secret is embedded anywhere.
+#
+# Required repository secrets:
+#   GHES_APP_ID          – GitHub App ID (numeric)
+#   GHES_APP_PRIVATE_KEY – GitHub App private key (PEM format)
+
+name: mirror-to-ghes
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GHES_HOST: maritimeais.ghe.com
+  GHES_API_URL: https://maritimeais.ghe.com/api/v3
+  GHES_ORG: mais
+  GHES_REPO: kp-pre-commit-hooks
+
+# Prevent concurrent mirror pushes from racing or corrupting history.
+concurrency:
+  group: mirror-to-ghes
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror to GHES
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Generate GHES App installation token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.GHES_APP_ID }}
+          private-key: ${{ secrets.GHES_APP_PRIVATE_KEY }}
+          owner: ${{ env.GHES_ORG }}
+          github-api-url: ${{ env.GHES_API_URL }}
+
+      # Bare clone so all refs land under refs/heads/* and refs/tags/* rather
+      # than refs/remotes/origin/*. git push --mirror then syncs every branch
+      # and tag correctly without manual ref translation.
+      - name: Bare-clone source and push mirror to GHES
+        run: |
+          git clone --bare \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            bare-repo
+          cd bare-repo
+          git push --mirror \
+            "https://x-access-token:${APP_TOKEN}@${GHES_HOST}/${GHES_ORG}/${GHES_REPO}.git"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
