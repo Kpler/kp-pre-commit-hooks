@@ -8,7 +8,7 @@ on:
 
 jobs:
   git-branch-linearity:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Run git-branch-linearity tests
@@ -18,7 +18,7 @@ jobs:
   # shallow clone + GITHUB_HEAD_REF). This is the exact setup that broke in
   # v0.57.0.
   git-branch-linearity-self:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
