@@ -134,6 +134,13 @@ poetry install
 poetry run pytest tests
 ```
 
+The tests use a minimal schema (`tests/test_data/schema-platform-managed-chart-strict.json`) holding only the parts of
+the real schema that carry the Kpler specific rules (`additionalChecks`), so they run without the VPN, e.g. in CI.
+To run them against the real schemas, with the Twingate VPN up:
+```bash
+poetry run pytest tests --real-schema
+```
+
 #### Local Debugging of Schema Validation Logic
 
 An example for testing against a repo:
