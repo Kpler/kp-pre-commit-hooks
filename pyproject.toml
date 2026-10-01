@@ -6,14 +6,14 @@ packages = [{include = "kp_pre_commit_hooks"}]
 authors = ["Kpler Engineering <team-engineering@kpler.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-jsonschema = "^4.19.0"
-requests = "^2.31.0"
-ruamel-yaml = "^0.17.32"
-urllib3 = { version = "^1.26.15", extras = ["secure"] }
-pyyaml = "^6.0.1"
-termcolor = "^2.4.0"
-semver = "^3.0.2"
+python = "^3.10"
+# Keep aligned with the gitops-values-validation additional_dependencies in .pre-commit-hooks.yaml
+jsonschema = "4.19.0"
+requests = "2.34.2"
+urllib3 = "2.8.0"
+pyyaml = "6.0.3"
+termcolor = "3.3.0"
+semver = "3.1.0"
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^22.10.0", allow-prereleases = true}

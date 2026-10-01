@@ -39,13 +39,13 @@
     # No parallel runs: values files headers may be rewritten and the schema cache is shared
     require_serial: true
     additional_dependencies:
+      # jsonschema is pinned: IGNORED_VALIDATION_ERRORS keys depend on its json_path format
       - jsonschema==4.19.0
-      - requests==2.31.0
-      - ruamel-yaml==0.17.32
-      - urllib3[secure]==1.26.15
-      - pyyaml==6.0.1
-      - termcolor==2.4.0
-      - semver==3.0.2
+      - requests==2.34.2
+      - urllib3==2.8.0
+      - pyyaml==6.0.3
+      - termcolor==3.3.0
+      - semver==3.1.0
 
 
 -   id: kafka-check-schemas
