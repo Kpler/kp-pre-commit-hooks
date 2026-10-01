@@ -1,5 +1,7 @@
+import argparse
 import json
 import re
+import subprocess
 import sys
 import textwrap
 from collections import defaultdict
@@ -235,6 +237,13 @@ class GitOpsRepository:
             _, env, instance = instance_values_file.stem.split("-", maxsplit=2)
             yield ServiceInstanceConfig(application_name, service_name, env, instance, instance_values_file.parent, self)
 
+    def iter_service_instances_config_affected_by(self, changed_files: Sequence[Path]):
+        """Yield only the service instances whose configuration depends on one of the changed files"""
+        resolved_changed_files = {f.resolve() for f in changed_files}
+        for config in self.iter_service_instances_config():
+            if any(source_file.resolve() in resolved_changed_files for source_file in config.source_files):
+                yield config
+
     def validate_unique_service_names(self) -> list[SchemaValidationError]:
         """Validate that service names are unique across all applications"""
         service_to_apps = defaultdict(set)
@@ -317,18 +326,23 @@ class ServiceInstanceConfig:
         return ValuesFile.merge_values(self.values_files)
 
     @property
+    def values_file_paths(self) -> list[Path]:
+        """Get candidate values files paths, existing or not"""
+        return [
+            self.path / "values.yaml",
+            self.path / f"values-{self.env}.yaml",
+            self.path / f"values-{self.env}-{self.instance}.yaml",
+        ]
+
+    @property
     def values_files(self) -> list[ValuesFile]:
         """Get list of values files"""
-        candidate_files = [
-            "values.yaml",
-            f"values-{self.env}.yaml",
-            f"values-{self.env}-{self.instance}.yaml"
-        ]
-        return [
-            ValuesFile(self.path.joinpath(file))
-            for file in candidate_files
-            if self.path.joinpath(file).exists()
-        ]
+        return [ValuesFile(path) for path in self.values_file_paths if path.exists()]
+
+    @property
+    def source_files(self) -> list[Path]:
+        """Get every file (existing or not) the instance configuration is built from"""
+        return [self.path / "Chart.yaml", self.path / f"Chart-{self.env}.yaml", *self.values_file_paths]
 
     @property
     def helm_chart(self) -> HelmChart:
@@ -681,8 +695,42 @@ def display_errors(
 # Main Entry Point
 ###############################################################################
 
-if __name__ == "__main__":
-    gitops_path = Path(sys.argv[1]) if len(sys.argv) >= 2 else Path.cwd()
+def get_staged_deleted_files(git_path: Path) -> list[Path]:
+    """Get files deleted in the git index, as pre-commit never passes deleted files to hooks"""
+    # --no-renames reports the old path of a renamed file as deleted,
+    # --relative makes paths relative to the current directory like the ones passed by pre-commit
+    output = subprocess.run(
+        ["git", "diff", "--staged", "--name-only", "--no-renames", "--relative", "--diff-filter=D", "-z"],
+        cwd=git_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+    return [git_path / file for file in output.split("\0") if file]
+
+
+def parse_args(argv: Sequence[str]) -> tuple[Path, Optional[list[Path]]]:
+    """Parse CLI arguments into the gitops repository path and the changed files (None to validate everything)"""
+    parser = argparse.ArgumentParser(description="Validate the values files of a gitops repository")
+    parser.add_argument(
+        "--changed-files",
+        action="store_true",
+        help="validate only the instances affected by the given files and the staged deleted files",
+    )
+    parser.add_argument("paths", nargs="*", type=Path, help="gitops repository path, or changed files with --changed-files")
+    args = parser.parse_args(argv)
+
+    if args.changed_files:
+        return Path.cwd(), args.paths
+    if len(args.paths) > 1:
+        parser.error("only one gitops repository path is expected, use --changed-files to pass changed files")
+    return (args.paths[0] if args.paths else Path.cwd()), None
+
+
+def main(argv: Sequence[str]) -> int:
+    gitops_path, changed_files = parse_args(argv)
+    if changed_files is not None:
+        changed_files = [*changed_files, *get_staged_deleted_files(gitops_path)]
     gitops_repository = GitOpsRepository(gitops_path)
 
     try:
@@ -700,7 +748,12 @@ if __name__ == "__main__":
             print(colorize("Repository constraints PASSED", "green"))
 
         # Individual service instance validations
-        for service_instance_config in gitops_repository.iter_service_instances_config():
+        service_instances_config = (
+            gitops_repository.iter_service_instances_config()
+            if changed_files is None
+            else gitops_repository.iter_service_instances_config_affected_by(changed_files)
+        )
+        for service_instance_config in service_instances_config:
             print(f"Checking {service_instance_config} ", end="")
 
             validator = ServiceInstanceConfigValidator(service_instance_config)
@@ -715,7 +768,7 @@ if __name__ == "__main__":
                 # We always try to sync the schema header version, in case it was one of the error detected
                 service_instance_config.sync_values_files_schema_header_version()
 
-        sys.exit(1 if errors_found else 0)
+        return 1 if errors_found else 0
 
     except UnauthorizedToDownloadSchema as error:
         print(
@@ -723,4 +776,8 @@ if __name__ == "__main__":
             "       Please check that your Twingate VPN Client is up and running configured.\n"
             f"       More info at {TWINGATE_DOC_URL}\n\n"
         )
-        sys.exit(1)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

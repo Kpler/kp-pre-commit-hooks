@@ -103,3 +103,9 @@ An example for testing against a repo:
 `poetry run python kp_pre_commit_hooks/gitops_values_validation.py ~/repos/mt-inbox-gitops`
 
 Send the entire gitops repository path in for it to parse through the gitops repository for validation.
+
+When run as a pre-commit hook, the changed files are passed with `--changed-files` instead, and only the
+service instances depending on them (`Chart.yaml`, `Chart-<env>.yaml`, `values.yaml`, `values-<env>.yaml`,
+`values-<env>-<instance>.yaml`) are validated. As pre-commit never passes deleted files to hooks, the staged
+deleted files are added by the script itself. Repository-level constraints are always checked.
+Use `pre-commit run gitops-values-validation --all-files` to validate every instance.
