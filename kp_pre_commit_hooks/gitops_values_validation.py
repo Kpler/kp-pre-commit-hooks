@@ -709,7 +709,7 @@ def get_staged_deleted_files(git_path: Path) -> list[Path]:
     return [git_path / file for file in output.split("\0") if file]
 
 
-def parse_args(argv: Sequence[str]) -> tuple[Path, Optional[list[Path]]]:
+def parse_args(argv: Optional[Sequence[str]] = None) -> tuple[Path, Optional[list[Path]]]:
     """Parse CLI arguments into the gitops repository path and the changed files (None to validate everything)"""
     parser = argparse.ArgumentParser(description="Validate the values files of a gitops repository")
     parser.add_argument(
@@ -727,7 +727,7 @@ def parse_args(argv: Sequence[str]) -> tuple[Path, Optional[list[Path]]]:
     return (args.paths[0] if args.paths else Path.cwd()), None
 
 
-def main(argv: Sequence[str]) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:
     gitops_path, changed_files = parse_args(argv)
     if changed_files is not None:
         changed_files = [*changed_files, *get_staged_deleted_files(gitops_path)]
@@ -780,4 +780,4 @@ def main(argv: Sequence[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

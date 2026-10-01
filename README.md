@@ -144,9 +144,9 @@ poetry run pytest tests --real-schema
 #### Local Debugging of Schema Validation Logic
 
 An example for testing against a repo:
-`poetry run python kp_pre_commit_hooks/gitops_values_validation.py ~/repos/mt-inbox-gitops`
+`poetry run gitops-values-validation ~/repos/mt-inbox-gitops`
 
 Send the entire gitops repository path in for it to parse through the gitops repository for validation.
 To only validate the instances affected by some files, as the hook does, run it from the gitops repository root
 with `--changed-files`:
-`poetry -P path_to_this_repo/kp-pre-commit-hooks run python -m kp_pre_commit_hooks.gitops_values_validation --changed-files gitops/app/service/values-dev.yaml`
+`poetry -P path_to_this_repo/kp-pre-commit-hooks run gitops-values-validation --changed-files gitops/app/service/values-dev.yaml`

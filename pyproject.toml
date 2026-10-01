@@ -1,26 +1,32 @@
-[tool.poetry]
+[project]
 name = "kp-pre-commit-hooks"
 version = "0.1.0"
 description = "Set of Kpler specific pre-commit hooks"
-packages = [{include = "kp_pre_commit_hooks"}]
-authors = ["Kpler Engineering <team-engineering@kpler.com>"]
+authors = [{ name = "Kpler Engineering", email = "team-engineering@kpler.com" }]
+requires-python = ">=3.10"
+# Installed in the hooks environment by pre-commit.
+# jsonschema is pinned: IGNORED_VALIDATION_ERRORS keys depend on its json_path format
+dependencies = [
+    "jsonschema==4.19.0",
+    "requests==2.34.2",
+    "urllib3==2.8.0",
+    "pyyaml==6.0.3",
+    "termcolor==3.3.0",
+    "semver==3.1.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-# Keep aligned with the gitops-values-validation additional_dependencies in .pre-commit-hooks.yaml
-jsonschema = "4.19.0"
-requests = "2.34.2"
-urllib3 = "2.8.0"
-pyyaml = "6.0.3"
-termcolor = "3.3.0"
-semver = "3.1.0"
+[project.scripts]
+gitops-values-validation = "kp_pre_commit_hooks.gitops_values_validation:main"
+
+[tool.poetry]
+packages = [{include = "kp_pre_commit_hooks"}]
 
 [tool.poetry.group.dev.dependencies]
 black = {version = "^22.10.0", allow-prereleases = true}
 pytest = "^8.3.5"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]

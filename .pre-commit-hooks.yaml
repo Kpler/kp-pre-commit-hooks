@@ -30,7 +30,7 @@
 -   id: gitops-values-validation
     name: GitOps values JSON schema validation
     language: python
-    entry: python -m kp_pre_commit_hooks.gitops_values_validation --changed-files
+    entry: gitops-values-validation --changed-files
     stages: [pre-commit]
     files: ^gitops/
     # Always run so that commits only deleting files are still checked:
@@ -38,14 +38,6 @@
     always_run: true
     # No parallel runs: values files headers may be rewritten and the schema cache is shared
     require_serial: true
-    additional_dependencies:
-      # jsonschema is pinned: IGNORED_VALIDATION_ERRORS keys depend on its json_path format
-      - jsonschema==4.19.0
-      - requests==2.34.2
-      - urllib3==2.8.0
-      - pyyaml==6.0.3
-      - termcolor==3.3.0
-      - semver==3.1.0
 
 
 -   id: kafka-check-schemas
