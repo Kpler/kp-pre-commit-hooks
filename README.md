@@ -80,6 +80,37 @@ repos:
       - id: terraform-repo-compliance
 ```
 
+#### `gitops-values-validation`
+
+Validate the values files of a gitops repository (`gitops/<application>/<service>/`) against the JSON schema
+of the `platform-managed-chart` version declared in `Chart.yaml` / `Chart-<env>.yaml`, plus Kpler specific rules:
+- service names are unique across applications and match their folder
+- topic names follow the naming convention and `maxLocalTopicBytes` stays within the allowed limits
+- the `$schema` header of each values file matches the chart version (it is fixed automatically when wrong)
+
+The JSON schemas are downloaded from S3 and cached in `~/.cache/pre-commit/kp-pre-commit-hooks/schemas`, so the
+[Twingate VPN](https://kpler.atlassian.net/wiki/spaces/KSD/pages/243562083/Install+and+configure+the+Twingate+VPN+client)
+must be up when a schema is not cached yet. The hook requires Python 3.10 or later.
+
+On commit, only the service instances depending on the changed files (`Chart.yaml`, `Chart-<env>.yaml`,
+`values.yaml`, `values-<env>.yaml`, `values-<env>-<instance>.yaml`) are validated. As pre-commit never passes
+deleted files to hooks, the staged deleted files are added by the script itself. Repository-level constraints
+(unique service names) are always checked. Run it with `--all-files` (e.g. in CI) to validate every instance:
+```bash
+pre-commit run gitops-values-validation --all-files
+```
+
+Add these lines in your `.pre-commit-config.yaml` file to enable this pre-commit hook:
+```yaml
+repos:
+  # [...]
+  - repo: https://github.com/Kpler/kp-pre-commit-hooks.git
+    rev: v0.63.0  # Use the latest version (v0.63.0+ to only validate the changed files)
+    hooks:
+      # [...]
+      - id: gitops-values-validation
+```
+
 [example of implementation]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/src/ci/scala/schema_generator/VulcanSchemaGenerator.scala
 [sbt command]: https://github.com/Kpler/template-kafka-stream-msk/blob/main/build.sbt#L75
 
@@ -94,12 +125,28 @@ pre-commit try-repo path_to_this_repo/kp-pre-commit-hooks/ check-branch-linearit
 ```
 
 
-### Local Debugging of Schema Validation Logic
+#### Development environment
 
-Prereq:
-`poetry install`
+Use `nix-shell` (or [direnv](https://direnv.net/) with the provided `.envrc`) to get Python, Poetry and
+pre-commit, or install Python 3.10+ and Poetry yourself. Then:
+```bash
+poetry install
+poetry run pytest tests
+```
+
+The tests use a minimal schema (`tests/test_data/schema-platform-managed-chart-strict.json`) holding only the parts of
+the real schema that carry the Kpler specific rules (`additionalChecks`), so they run without the VPN, e.g. in CI.
+To run them against the real schemas, with the Twingate VPN up:
+```bash
+poetry run pytest tests --real-schema
+```
+
+#### Local Debugging of Schema Validation Logic
 
 An example for testing against a repo:
-`poetry run python kp_pre_commit_hooks/gitops_values_validation.py ~/repos/mt-inbox-gitops`
+`poetry run gitops-values-validation ~/repos/mt-inbox-gitops`
 
 Send the entire gitops repository path in for it to parse through the gitops repository for validation.
+To only validate the instances affected by some files, as the hook does, run it from the gitops repository root
+with `--changed-files`:
+`poetry -P path_to_this_repo/kp-pre-commit-hooks run gitops-values-validation --changed-files gitops/app/service/values-dev.yaml`

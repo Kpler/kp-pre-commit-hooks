@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Minimal platform-managed-chart schema for tests: only the parts carrying the additionalChecks of the real schema",
+  "type": "object",
+  "required": ["platform-managed-chart"],
+  "properties": {
+    "platform-managed-chart": {
+      "type": "object",
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "additionalChecks": ["serviceNameMatchesServiceFolder"]
+        },
+        "services": {
+          "type": "object",
+          "additionalChecks": ["serviceKeysMatchServiceFolder"]
+        },
+        "managedResources": {
+          "type": "object",
+          "properties": {
+            "mskTopics": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalChecks": ["maxLocalTopicBytesCompliance"],
+                "properties": {
+                  "topicName": {
+                    "type": "string",
+                    "additionalChecks": ["topicNameCompliance"]
+                  },
+                  "topicNameTemplate": {
+                    "type": "string",
+                    "additionalChecks": ["topicNameCompliance"]
+                  },
+                  "maxLocalTopicBytes": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
