@@ -146,8 +146,37 @@ class SchemaValidationError(Exception):
 SCHEMA_CACHE_DIR = Path.home() / ".cache" / "pre-commit" / "kp-pre-commit-hooks" / "schemas"
 
 
+# A secret kp writes, named in full: selfservice/k8s/<env>/<application>/<service or _shared>/<secret>.
+# Charts before 0.1.318 pass secretsManagerPath to the ExternalSecret as is, so they read it like a legacy
+# path, but their published schemas only allow k8s/...: the legacy-secrets migration (PTFM-26625) keeps
+# those services on their chart and points them at self-service this way, without a restart.
+SELFSERVICE_SECRET_PATH = r"selfservice/k8s/(dev|prod|shared|test|adnocuat|adnocprod)/[^/]+/[^/]+/[^/]+$"
+
+
+def accept_selfservice_secret_paths(node):
+    """Widen every secretsManagerPath pattern that only allows legacy k8s/ paths to accept a self-service one."""
+    if isinstance(node, dict):
+        properties = node.get("properties")
+        if isinstance(properties, dict):
+            entry = properties.get("secretsManagerPath")
+            pattern = entry.get("pattern") if isinstance(entry, dict) else None
+            if isinstance(pattern, str) and pattern.startswith("^k8s/"):
+                entry["pattern"] = f"^(?:{pattern[1:]}|{SELFSERVICE_SECRET_PATH})"
+        for value in node.values():
+            accept_selfservice_secret_paths(value)
+    elif isinstance(node, list):
+        for value in node:
+            accept_selfservice_secret_paths(value)
+    return node
+
+
 @cache
 def download_json_schema(url: str) -> dict:
+    """Download a JSON schema, widened by accept_selfservice_secret_paths."""
+    return accept_selfservice_secret_paths(fetch_json_schema(url))
+
+
+def fetch_json_schema(url: str) -> dict:
     """Download JSON schema, using a persistent disk cache for versioned URLs."""
     filename = url.removeprefix(SCHEMA_BASE_URL + "/").replace("/", "_")
     cache_file = SCHEMA_CACHE_DIR / filename
