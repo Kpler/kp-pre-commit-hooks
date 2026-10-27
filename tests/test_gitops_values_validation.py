@@ -188,3 +188,51 @@ def test_topic_with_hyphenated_suffix_is_accepted(
 
     # THEN
     assert len(errors) == 0, f"Topic with hyphenated suffix should be accepted, got: {errors}"
+
+
+def test_a_secret_named_by_its_full_self_service_path_is_accepted(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN a chart whose published schema only allows k8s/ paths in secretsManagerPath
+    validator = create_validator_for_test_file("app1/service1/values-dev-selfservice-secret-path.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert errors == [], f"Expected no validation errors, got {[e.message for e in errors]}"
+
+
+def test_a_malformed_self_service_path_is_still_refused(
+    create_validator_for_test_file: Callable[[str], ServiceInstanceConfigValidator],
+) -> None:
+    # GIVEN an unknown environment and a missing level
+    validator = create_validator_for_test_file("app1/service1/values-dev-malformed-selfservice-secret-path.yaml")
+
+    # WHEN
+    errors = validator.validate_configuration()
+
+    # THEN
+    assert len(errors) == 1 and "does not match" in errors[0].message
+
+
+def test_only_legacy_secret_path_patterns_are_widened() -> None:
+    from kp_pre_commit_hooks.gitops_values_validation import accept_selfservice_secret_paths
+    import re
+
+    schema = {
+        "properties": {
+            "secretsManagerPath": {"type": "string", "pattern": "^k8s/(dev|prod)/(common|main)/"},
+            "okta": {"properties": {"secretsManagerPath": {"pattern": "^selfservice/k8s/(dev|prod)/"}}},
+        }
+    }
+    widened = accept_selfservice_secret_paths(schema)["properties"]
+    pattern = widened["secretsManagerPath"]["pattern"]
+
+    assert re.match(pattern, "k8s/dev/common/my-app/db")
+    assert re.match(pattern, "selfservice/k8s/dev/my-app/my-svc/env")
+    assert re.match(pattern, "selfservice/k8s/prod/my-app/_shared/db-credentials")
+    assert not re.match(pattern, "selfservice/k8s/dev/my-app/env")
+    assert not re.match(pattern, "selfservice/k8s/dev/my-app/my-svc/env/extra")
+    assert not re.match(pattern, "other/k8s/dev/common/x")
+    assert widened["okta"]["properties"]["secretsManagerPath"]["pattern"] == "^selfservice/k8s/(dev|prod)/"
